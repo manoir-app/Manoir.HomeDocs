@@ -65,9 +65,9 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] Les contrats et Logic n’exposent ni `DbContext`, ni types EF Core, ni types propres à un moteur.
-- [ ] Une opération de persistance réelle et ses migrations SQLite sont testées en intégration ; la logique correspondante est testée avec des opérations simulées.
-- [ ] Les futures opérations peuvent être ajoutées sans réécrire les règles métier pour changer de moteur.
+- [x] Les contrats et Logic n’exposent ni `DbContext`, ni types EF Core, ni types propres à un moteur.
+- [x] Une opération de persistance réelle et ses migrations SQLite sont testées en intégration ; la logique correspondante est testée avec des opérations simulées.
+- [x] Les futures opérations peuvent être ajoutées sans réécrire les règles métier pour changer de moteur.
 
 ### HD-02 — Créer le premier administrateur et sécuriser le back-office
 
@@ -84,9 +84,9 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] Un premier compte est créé depuis l’onboarding puis permet de se connecter.
-- [ ] Les accès administratifs non authentifiés et toute nouvelle initialisation non autorisée sont refusés côté serveur.
-- [ ] Les tests couvrent l’initialisation, la connexion et les refus ; la procédure est documentée.
+- [x] Un premier compte est créé depuis l’onboarding puis permet de se connecter.
+- [x] Les accès administratifs non authentifiés et toute nouvelle initialisation non autorisée sont refusés côté serveur.
+- [x] Les tests couvrent l’initialisation, la connexion et les refus ; la procédure est documentée.
 
 ### HD-03 — Stocker et publier des pages Markdown
 

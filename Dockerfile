@@ -12,8 +12,12 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend
 WORKDIR /src
 COPY NuGet.config ./
 COPY apps/Manoir.HomeDocs.Api/Manoir.HomeDocs.Api.csproj apps/Manoir.HomeDocs.Api/
+COPY packages/Manoir.HomeDocs.Contracts/Manoir.HomeDocs.Contracts.csproj packages/Manoir.HomeDocs.Contracts/
+COPY packages/Manoir.HomeDocs/Manoir.HomeDocs.csproj packages/Manoir.HomeDocs/
+COPY packages/Manoir.HomeDocs.Persistence.Sqlite/Manoir.HomeDocs.Persistence.Sqlite.csproj packages/Manoir.HomeDocs.Persistence.Sqlite/
 RUN dotnet restore apps/Manoir.HomeDocs.Api/Manoir.HomeDocs.Api.csproj
 COPY apps/Manoir.HomeDocs.Api/ apps/Manoir.HomeDocs.Api/
+COPY packages/ packages/
 RUN dotnet publish apps/Manoir.HomeDocs.Api/Manoir.HomeDocs.Api.csproj -c Release --no-restore -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

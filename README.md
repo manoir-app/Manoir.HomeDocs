@@ -2,14 +2,13 @@
 
 Socle du « Manuel de la maison », destiné à fonctionner sur le réseau local.
 Ce dépôt contient une API ASP.NET Core 10 et deux interfaces React/TypeScript
-distinctes : le site public et le futur back-office.
+distinctes : le site public et le back-office.
 
 ## État actuel
 
-Cette première étape fournit uniquement des écrans d'attente, le point de santé
-et la documentation OpenAPI. Il n'y a pas encore de compte administrateur,
-d'authentification, de gestion de contenu, de base SQLite ni de connecteur.
-L'écran `/admin/` est donc public et ne doit pas recevoir de données sensibles.
+Le premier compte administrateur peut être créé localement ; les routes et API
+d'administration sont protégées côté serveur. Les données de configuration sont
+stockées dans SQLite. La gestion de contenu et les connecteurs restent à venir.
 Le back-office utilise le kit de composants MaNoir ; le site public possède ses
 propres composants.
 
@@ -74,6 +73,36 @@ sont servies par Vite ; en production, ASP.NET sert leurs fichiers compilés.
 Les chemins inconnus sous `/api` ou `/openapi` et les ressources absentes ne
 doivent pas être redirigés vers les pages React.
 
+## Initialisation et sécurité
+
+Au premier lancement, ouvrir `/admin/`, créer le compte administrateur puis se
+connecter. Le nom est obligatoire et le mot de passe doit comporter entre 12
+et 1 024 caractères. Aucun identifiant ni mot de passe n'est créé par défaut.
+L'initialisation n'est possible qu'une fois, même en cas de requêtes simultanées.
+Protéger l'accès à l'application avant cette première configuration : toute
+personne pouvant y accéder peut créer le premier compte. La récupération ou la
+réinitialisation du compte n'est pas encore implémentée.
+
+Les mots de passe sont stockés sous forme de hash ASP.NET Core Identity. La
+session utilise un cookie HttpOnly, SameSite Strict, avec expiration glissante
+de huit heures. Les opérations sensibles utilisent un jeton antiforgery et les
+tentatives d'initialisation et de connexion sont limitées ensemble à dix par
+minute et par adresse IP, par instance. Après déconnexion, une nouvelle
+authentification est nécessaire. L'interface est disponible en français et en
+anglais ; le choix de langue n'est pas encore conservé.
+
+**Sur HTTP, les identifiants et les cookies circulent sans chiffrement.**
+N'utiliser HTTP que sur un réseau de confiance ; sur un réseau non fiable,
+configurer HTTPS de bout en bout et vérifier les paramètres du proxy et de
+l'application avant exposition. Le cookie n'est marqué `Secure` que lorsque
+l'application reçoit une requête HTTPS ; la prise en charge d'un proxy TLS
+n'est pas configurée par défaut.
+
+La base est créée dans `database/homedocs.db` sous le répertoire de données ;
+les migrations SQLite sont appliquées automatiquement au démarrage. Conserver
+la base et les clés Data Protection dans les sauvegardes et en limiter l'accès :
+les clés enregistrées sur disque ne sont pas chiffrées par l'application.
+
 ## Docker Compose
 
 Avec `NODE_AUTH_TOKEN` configuré dans le terminal :
@@ -95,9 +124,9 @@ docker compose up -d --no-build
 Le volume nommé `homedocs-data` est monté sur `/data` et conservé lors d'un
 arrêt ou d'une recréation du conteneur. Il contient les répertoires `database`,
 `content`, `media`, `themes`, `css`, `backups` et `keys` ; ces répertoires
-préparent les étapes suivantes et ne constituent pas encore une fonctionnalité
-de stockage ou de sauvegarde. Les clés ASP.NET Data Protection sont persistées
-dans `keys`. En développement, `HomeDocs__DataPath` permet de choisir un autre
+préparent les étapes suivantes, à l'exception de `database` et `keys`, utilisés
+par SQLite et les clés ASP.NET Data Protection. Ils ne constituent pas une
+fonctionnalité de sauvegarde. En développement, `HomeDocs__DataPath` permet de choisir un autre
 répertoire ; par défaut, il est situé dans `apps/Manoir.HomeDocs.Api/data`.
 
 Les journaux de l'API sont émis au format JSON. Le conteneur est relancé selon
@@ -116,17 +145,14 @@ npm run build
 docker compose config --quiet
 ```
 
-Les tests .NET couvrent le healthcheck, OpenAPI, la séparation des deux
-interfaces et les routes ou ressources absentes. Les tests React couvrent les
-écrans minimaux. Les fonctionnalités futures doivent être accompagnées de
-leurs propres tests.
+Les tests .NET couvrent notamment les migrations SQLite, la concurrence,
+l'authentification, les refus et la persistance après redémarrage. Les tests
+React couvrent l'onboarding, la connexion, la déconnexion et les erreurs.
 
-Vérifications effectuées : 17 tests .NET, deux tests React, lint, formatage,
-typecheck et build réussis. Le démarrage de développement et le healthcheck ont
-été vérifiés, ainsi que le build et le lancement Compose, la modification du port
-et la persistance du volume après recréation du conteneur. Les deux interfaces
-ont été affichées en navigateur en bloquant les requêtes vers des origines
-externes. L'image construite a également été redémarrée sans jeton.
+Le package du kit MaNoir `0.1.78` publie des chemins de déclarations TypeScript
+incorrects dans son point d'entrée ; `ui/admin/tsconfig.json` référence ses
+déclarations internes pour le contrôle des types. Le bundler utilise toujours
+le point d'entrée normal. Retirer cet alias lorsque le package sera corrigé.
 
 `npm audit --omit=dev` ne signale aucune vulnérabilité. L'audit complet signale
 des vulnérabilités modérées liées à `minimatch` dans les dépendances de lint ;

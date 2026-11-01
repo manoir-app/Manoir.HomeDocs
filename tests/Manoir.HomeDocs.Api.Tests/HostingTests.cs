@@ -2,6 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -39,8 +40,8 @@ public sealed class HostingTests : IDisposable
     [Theory]
     [InlineData("/", "public interface")]
     [InlineData("/some/page", "public interface")]
-    [InlineData("/admin/", "admin interface")]
-    [InlineData("/admin/some/page", "admin interface")]
+    [InlineData("/admin/login", "admin interface")]
+    [InlineData("/admin/setup", "admin interface")]
     [InlineData("/assets/public.js", "public asset")]
     [InlineData("/admin/assets/admin.js", "admin asset")]
     public async Task ServesCorrectInterface(string path, string expected)
@@ -72,12 +73,12 @@ public sealed class HostingTests : IDisposable
     }
 
     [Fact]
-    public async Task AdminRootRedirectsToSlash()
+    public async Task AdminRootRedirectsUnauthenticatedUsersToLogin()
     {
         using var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         using var response = await client.GetAsync("/admin");
         Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        Assert.Equal("/admin/", response.Headers.Location?.OriginalString);
+        Assert.Equal("/admin/login", response.Headers.Location?.AbsolutePath);
     }
 
     [Fact]
@@ -85,7 +86,7 @@ public sealed class HostingTests : IDisposable
     {
         File.Delete(Path.Combine(root, "admin", "index.html"));
         using var client = factory.CreateClient();
-        using var response = await client.GetAsync("/admin/");
+        using var response = await client.GetAsync("/admin/setup");
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
     }
@@ -118,6 +119,11 @@ public sealed class HostingTests : IDisposable
     public void Dispose()
     {
         factory.Dispose();
+        using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = Path.Combine(root, "data", "database", "homedocs.db")
+        }.ToString());
+        SqliteConnection.ClearPool(connection);
         if (Directory.Exists(root))
         {
             Directory.Delete(root, recursive: true);

@@ -12,5 +12,6 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
     <ProjectReference Include="..\..\apps\Manoir.HomeDocs.Api\Manoir.HomeDocs.Api.csproj" />
+    <ProjectReference Include="..\..\packages\Manoir.HomeDocs.Persistence.Sqlite\Manoir.HomeDocs.Persistence.Sqlite.csproj" />
   </ItemGroup>
 </Project>

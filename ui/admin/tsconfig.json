@@ -1,4 +1,11 @@
 {
   "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@manoir-app/core-admin-ui-kit": [
+        "../../node_modules/@manoir-app/core-admin-ui-kit/dist/src/index.d.ts"
+      ]
+    }
+  },
   "include": ["src", "vite.config.ts"]
 }

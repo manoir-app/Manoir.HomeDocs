@@ -1,4 +1,7 @@
 <Solution>
   <Project Path="apps/Manoir.HomeDocs.Api/Manoir.HomeDocs.Api.csproj" />
+  <Project Path="packages/Manoir.HomeDocs.Contracts/Manoir.HomeDocs.Contracts.csproj" />
+  <Project Path="packages/Manoir.HomeDocs/Manoir.HomeDocs.csproj" />
+  <Project Path="packages/Manoir.HomeDocs.Persistence.Sqlite/Manoir.HomeDocs.Persistence.Sqlite.csproj" />
   <Project Path="tests/Manoir.HomeDocs.Api.Tests/Manoir.HomeDocs.Api.Tests.csproj" />
 </Solution>

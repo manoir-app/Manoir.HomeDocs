@@ -7,5 +7,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.14" />
+    <ProjectReference Include="..\..\packages\Manoir.HomeDocs.Persistence.Sqlite\Manoir.HomeDocs.Persistence.Sqlite.csproj" />
   </ItemGroup>
 </Project>
