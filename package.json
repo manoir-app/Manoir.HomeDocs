@@ -1,0 +1,40 @@
+{
+  "name": "manoir-homedocs",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "ui/public",
+    "ui/admin"
+  ],
+  "scripts": {
+    "dev": "concurrently --kill-others --names api,public,admin \"dotnet run --project apps/Manoir.HomeDocs.Api --no-launch-profile --environment ASPNETCORE_ENVIRONMENT=Development --urls http://localhost:5100\" \"npm run dev -w @homedocs/public\" \"npm run dev -w @homedocs/admin\"",
+    "dev:api": "dotnet run --project apps/Manoir.HomeDocs.Api --no-launch-profile --environment ASPNETCORE_ENVIRONMENT=Development --urls http://localhost:5100",
+    "dev:public": "npm run dev -w @homedocs/public",
+    "dev:admin": "npm run dev -w @homedocs/admin",
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "lint": "eslint ui",
+    "format:check": "prettier --check \"*.json\" \"ui/**/*.{ts,tsx,css,html,json}\"",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.0.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.0",
+    "globals": "^17.0.0",
+    "jsdom": "^28.0.0",
+    "prettier": "^3.7.4",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.1",
+    "vite": "^8.0.10",
+    "vitest": "^4.1.0"
+  }
+}

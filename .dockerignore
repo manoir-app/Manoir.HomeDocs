@@ -1,0 +1,11 @@
+.git
+.vs
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/data
+*.env
+README.md
+specs
+scripts

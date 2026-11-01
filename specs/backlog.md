@@ -46,9 +46,9 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] L’application démarre en développement et avec `docker compose up -d --build` ; son healthcheck répond.
-- [ ] Le frontend et le backend démarrent sans service Internet et sans secret réel dans le dépôt.
-- [ ] Les commandes et les résultats des vérifications disponibles sont documentés.
+- [x] L’application démarre en développement et avec `docker compose up -d --build` ; son healthcheck répond.
+- [x] Le frontend et le backend démarrent sans service Internet et sans secret réel dans le dépôt.
+- [x] Les commandes et les résultats des vérifications disponibles sont documentés.
 
 ### HD-27 — Structurer le métier et la persistance SQLite
 

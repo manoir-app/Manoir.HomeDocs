@@ -1,0 +1,14 @@
+body {
+  margin: 0;
+}
+
+.admin {
+  min-height: 100vh;
+  padding: clamp(1.5rem, 5vw, 4rem);
+}
+
+.admin-card {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem;
+}

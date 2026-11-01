@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="apps/Manoir.HomeDocs.Api/Manoir.HomeDocs.Api.csproj" />
+  <Project Path="tests/Manoir.HomeDocs.Api.Tests/Manoir.HomeDocs.Api.Tests.csproj" />
+</Solution>
