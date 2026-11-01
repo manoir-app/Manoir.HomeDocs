@@ -129,6 +129,24 @@ public sealed class AdministratorLogicTests
         Assert.Equal("en", operations.UpdatedLanguage);
     }
 
+    [Fact]
+    public async Task PinVerificationRequiresConfiguredHashAndSixDigits()
+    {
+        var operations = new StubAdministrators { PinHash = "stored-pin-hash" };
+        var passwords = new StubPasswords { Verified = true };
+        var logic = new AdministratorLogic(operations, passwords);
+
+        Assert.False(await logic.VerifyPinAsync("12345"));
+        Assert.Null(passwords.VerifiedHash);
+        Assert.True(await logic.VerifyPinAsync("012345"));
+        Assert.Equal("stored-pin-hash", passwords.VerifiedHash);
+
+        operations.PinHash = null;
+        var verifyCalls = passwords.VerifyCalls;
+        Assert.False(await logic.VerifyPinAsync("012345"));
+        Assert.Equal(verifyCalls, passwords.VerifyCalls);
+    }
+
     private sealed class StubAdministrators : IAdministratorOperations
     {
         public bool Initialized { get; init; }
@@ -143,6 +161,7 @@ public sealed class AdministratorLogicTests
         public string? UpdatedPasswordHash { get; private set; }
         public string? UpdatedPinHash { get; private set; }
         public string? UpdatedLanguage { get; private set; }
+        public string? PinHash { get; set; }
 
         public Task<bool> IsInitializedAsync(CancellationToken cancellationToken = default)
         {
@@ -163,6 +182,9 @@ public sealed class AdministratorLogicTests
             LookupName = normalizedUserName;
             return Task.FromResult(Found?.NormalizedUserName == normalizedUserName ? Found : null);
         }
+
+        public Task<string?> GetPinHashAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(PinHash);
 
         public Task<bool> UpdateCredentialsAsync(string currentNormalizedUserName, string userName, string normalizedUserName, string passwordHash, CancellationToken cancellationToken = default)
         {
@@ -192,9 +214,11 @@ public sealed class AdministratorLogicTests
     {
         public bool Verified { get; set; }
         public string? VerifiedHash { get; private set; }
+        public int VerifyCalls { get; private set; }
         public string Hash(string password) => "hashed";
         public bool Verify(string? passwordHash, string password)
         {
+            VerifyCalls++;
             VerifiedHash = passwordHash;
             return Verified;
         }

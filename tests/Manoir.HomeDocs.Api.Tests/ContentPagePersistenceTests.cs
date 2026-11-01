@@ -26,6 +26,10 @@ public sealed class ContentPagePersistenceTests : IAsyncLifetime
         services = new ServiceCollection().AddLogging(builder => builder.AddProvider(logs))
             .AddHomeDocsSqlite(_ => DatabasePath).BuildServiceProvider();
         await services.MigrateHomeDocsAsync();
+        await using var scope = services.CreateAsyncScope();
+        Assert.Equal(ContextWriteResult.Success,
+            await scope.ServiceProvider.GetRequiredService<IUsageContextOperations>()
+                .SaveAsync(null, new UsageContext("maison", "Maison", null)));
     }
 
     public async Task DisposeAsync()
@@ -46,11 +50,17 @@ public sealed class ContentPagePersistenceTests : IAsyncLifetime
         return await action(scope.ServiceProvider.GetRequiredService<IContentPageOperations>());
     }
 
+    private async Task<T> RunTree<T>(Func<IPageTreeOperations, Task<T>> action)
+    {
+        await using var scope = services.CreateAsyncScope();
+        return await action(scope.ServiceProvider.GetRequiredService<IPageTreeOperations>());
+    }
+
     private static ContentPage New(string slug, bool published = false) =>
         new(Guid.NewGuid(), "Titre", slug, "page", ["maison"], true, published, "# Bonjour\nété", 1);
 
     [Fact]
-    public async Task MigrationPreservesAdministratorAndPersistsMarkdownAndMetadata()
+    public async Task MigrationPreservesAdministratorAndInitializesPageSchema()
     {
         var upgradeRoot = Path.Combine(root, "upgrade");
         var db = Path.Combine(upgradeRoot, "database", "homedocs.db");
@@ -68,6 +78,7 @@ public sealed class ContentPagePersistenceTests : IAsyncLifetime
         {
             Assert.NotNull(await scope.ServiceProvider.GetRequiredService<IAdministratorOperations>().FindByNormalizedUserNameAsync("ADMIN"));
             Assert.Equal(3, (await scope.ServiceProvider.GetRequiredService<HomeDocsDbContext>().Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Empty(await scope.ServiceProvider.GetRequiredService<IPageTreeOperations>().ListAsync());
         }
 
         var page = New("ma-page");
@@ -216,9 +227,59 @@ public sealed class ContentPagePersistenceTests : IAsyncLifetime
             await Assert.ThrowsAsync<IOException>(() => Run(ops => ops.FindAsync(page.Id)));
             Assert.True(File.Exists(path));
         }
+
         Assert.Null(await Run(ops => ops.FindAsync(page.Id)));
         Assert.Equal(page.Markdown, await File.ReadAllTextAsync(Assert.Single(Directory.GetFiles(QuarantinePath))));
         Assert.Contains(logs.Messages, message => message.Contains("Unable to quarantine"));
+    }
+
+    [Fact]
+    public async Task PageTreeSupportsPlacementLinksAndKeyboardReorderingWithoutCopies()
+    {
+        var parentPage = New("parent");
+        var childPage = New("child");
+        Assert.Equal(PageWriteResult.Success, await Run(ops => ops.SaveAsync(parentPage, true)));
+        var parentNode = Assert.Single(await RunTree(ops => ops.ListAsync()));
+        Assert.Equal(parentPage.Id, parentNode.PageId);
+
+        Assert.Equal(PageWriteResult.Success,
+            await Run(ops => ops.SaveAsync(childPage, true, parentNodeId: parentNode.Id)));
+        var nodes = await RunTree(ops => ops.ListAsync());
+        var childNode = Assert.Single(nodes, node => node.PageId == childPage.Id);
+        Assert.Equal(parentNode.Id, childNode.ParentNodeId);
+
+        Assert.Equal(PageTreeResult.Success,
+            await RunTree(ops => ops.CreateLinkAsync(parentPage.Id, childNode.Id)));
+        nodes = await RunTree(ops => ops.ListAsync());
+        var link = Assert.Single(nodes, node => node.IsLink);
+        Assert.Equal(parentPage.Id, link.PageId);
+        Assert.Equal(parentPage.Id, await RunTree(ops => ops.ResolveTargetPageAsync(link.Id)));
+        Assert.Equal(2, (await Run(ops => ops.ListAsync())).Count);
+        Assert.Equal(PageTreeResult.PageNotFound,
+            await RunTree(ops => ops.CreateLinkAsync(Guid.NewGuid(), null)));
+        Assert.Equal(PageTreeResult.InvalidMove,
+            await RunTree(ops => ops.MoveAsync(parentNode.Id, link.Id, 0)));
+        Assert.Equal(PageTreeResult.HasChildren,
+            await RunTree(ops => ops.RemoveAsync(parentNode.Id)));
+        Assert.Equal(PageTreeResult.Success,
+            await RunTree(ops => ops.RemoveAsync(link.Id)));
+        Assert.Equal(PageTreeResult.CannotRemovePageNode,
+            await RunTree(ops => ops.RemoveAsync(childNode.Id)));
+        Assert.Equal(PageWriteResult.Success,
+            await Run(ops => ops.DeleteAsync(childPage.Id, 1)));
+
+        var siblingPage = New("sibling");
+        Assert.Equal(PageWriteResult.Success, await Run(ops => ops.SaveAsync(siblingPage, true)));
+        var siblingNode = Assert.Single(await RunTree(ops => ops.ListAsync()),
+            node => node.PageId == siblingPage.Id);
+        Assert.Equal(PageTreeResult.Success,
+            await RunTree(ops => ops.MoveAsync(siblingNode.Id, null, 0)));
+        nodes = await RunTree(ops => ops.ListAsync());
+        Assert.Equal(siblingNode.Id, nodes.OrderBy(node => node.Position).First().Id);
+        Assert.Equal(PageTreeResult.Success,
+            await RunTree(ops => ops.MoveAsync(parentNode.Id, siblingNode.Id, 0)));
+        Assert.Equal(PageTreeResult.InvalidMove,
+            await RunTree(ops => ops.MoveAsync(siblingNode.Id, parentNode.Id, 0)));
     }
 
     [Fact]

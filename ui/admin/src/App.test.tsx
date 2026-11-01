@@ -116,6 +116,48 @@ describe('administration', () => {
     expect(window.location.pathname).toBe('/admin/login');
   });
 
+  it('installs demo content only after an explicit administrator action', async () => {
+    const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
+      if (input.endsWith('/status'))
+        return respond(200, { isInitialized: true });
+      if (input.endsWith('/session'))
+        return respond(200, { userName: 'admin' });
+      if (input.endsWith('/settings/'))
+        return respond(200, {
+          userName: 'admin',
+          pinConfigured: false,
+          language: 'fr',
+        });
+      if (input.endsWith('/antiforgery'))
+        return respond(200, { token: 'demo-token' });
+      if (input.endsWith('/demo/install')) {
+        expect(init?.method).toBe('POST');
+        expect(init?.headers).toHaveProperty('X-CSRF-TOKEN', 'demo-token');
+        return respond(200, { status: 'installed' });
+      }
+      throw new Error(`Unexpected request: ${input}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+
+    await screen.findByRole('heading', { name: 'Administration' });
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      '/api/admin/demo/install',
+      expect.anything(),
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Installer les données fictives' }),
+    );
+    expect(
+      await screen.findByText('Les contenus fictifs sont installés.'),
+    ).toBeVisible();
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/admin/demo/install',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
   it('rejects mismatched confirmation without sending credentials', async () => {
     const fetchMock = vi.fn(async () => respond(200, { isInitialized: false }));
     vi.stubGlobal('fetch', fetchMock);
@@ -405,13 +447,20 @@ describe('administration', () => {
           pinConfigured: false,
           language: 'fr',
         });
+      if (input.endsWith('/contexts/'))
+        return respond(200, [
+          { id: 'invites', name: 'Invités', rootNodeId: null },
+        ]);
+      if (input.endsWith('/tree/')) return respond(200, []);
       if (input.endsWith('/pages/') && (!init || init.method === undefined))
         return respond(200, created ? [page] : []);
       if (input.endsWith('/antiforgery'))
         return respond(200, { token: 'content-token' });
       if (input.endsWith('/pages/') && init?.method === 'POST') {
         created = true;
-        Object.assign(page, JSON.parse(String(init.body)));
+        const request = JSON.parse(String(init.body));
+        expect(request.placement.parentNodeId).toBeNull();
+        Object.assign(page, request.page);
         return respond(201, { id: page.id });
       }
       if (
@@ -451,8 +500,9 @@ describe('administration', () => {
     fireEvent.change(screen.getByLabelText(/^Slug/), {
       target: { value: 'cuisine' },
     });
-    fireEvent.change(screen.getByLabelText(/^Contextes/), {
-      target: { value: 'invites' },
+    fireEvent.click(screen.getByLabelText('Invités (invites)'));
+    fireEvent.change(screen.getByLabelText('Emplacement'), {
+      target: { value: 'root' },
     });
 
     expect(
@@ -480,5 +530,179 @@ describe('administration', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pages' }));
     expect(await screen.findByText('Cuisine mise à jour')).toBeVisible();
     expect(screen.getByText('Publiée')).toBeVisible();
+  });
+
+  it('creates direct page links and reorders tree nodes with keyboard controls', async () => {
+    const pages = [
+      { id: 'page-a', title: 'Pièce A', slug: 'piece-a' },
+      { id: 'page-b', title: 'Pièce B', slug: 'piece-b' },
+    ];
+    const nodes = [
+      {
+        id: 'node-a',
+        parentNodeId: null,
+        pageId: pages[0].id,
+        title: pages[0].title,
+        slug: pages[0].slug,
+        isLink: false,
+        position: 0,
+      },
+      {
+        id: 'node-b',
+        parentNodeId: null,
+        pageId: pages[1].id,
+        title: pages[1].title,
+        slug: pages[1].slug,
+        isLink: false,
+        position: 1,
+      },
+    ];
+    const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
+      if (input.endsWith('/status'))
+        return respond(200, { isInitialized: true });
+      if (input.endsWith('/session'))
+        return respond(200, { userName: 'admin' });
+      if (input.endsWith('/settings/'))
+        return respond(200, {
+          userName: 'admin',
+          pinConfigured: false,
+          language: 'fr',
+        });
+      if (input.endsWith('/pages/') && (!init || init.method === undefined))
+        return respond(
+          200,
+          pages.map((page) => ({
+            ...page,
+            category: 'piece',
+            contexts: [],
+            requiresAuthentication: false,
+            isPublished: true,
+            markdown: `# ${page.title}`,
+            revision: 1,
+          })),
+        );
+      if (input.endsWith('/tree/')) return respond(200, nodes);
+      if (input.endsWith('/antiforgery'))
+        return respond(200, { token: 'tree-token' });
+      if (input.endsWith('/tree/links') && init?.method === 'POST') {
+        const request = JSON.parse(String(init.body));
+        const target = pages.find((page) => page.id === request.pageId)!;
+        nodes.push({
+          id: 'link-a',
+          parentNodeId: request.parentNodeId,
+          pageId: target.id,
+          title: target.title,
+          slug: target.slug,
+          isLink: true,
+          position: nodes.filter(
+            (node) => node.parentNodeId === request.parentNodeId,
+          ).length,
+        });
+        return respond(204);
+      }
+      if (input.includes('/tree/nodes/') && init?.method === 'PUT') {
+        const nodeId = input.split('/').pop()!;
+        const node = nodes.find((item) => item.id === nodeId)!;
+        const request = JSON.parse(String(init.body));
+        node.parentNodeId = request.parentNodeId;
+        node.position = request.position;
+        return respond(204);
+      }
+      throw new Error(`Unexpected request: ${input} ${init?.method ?? 'GET'}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { container } = render(<App />);
+
+    await screen.findByRole('heading', { name: 'Administration' });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Gérer l’arborescence' }),
+    );
+    await screen.findByRole('tree');
+    fireEvent.click(screen.getByRole('button', { name: 'Monter: Pièce B' }));
+    await waitFor(() =>
+      expect(nodes.find((node) => node.id === 'node-b')?.position).toBe(0),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Rendre sous-page: Pièce B' }),
+    );
+    await waitFor(() =>
+      expect(nodes.find((node) => node.id === 'node-b')?.parentNodeId).toBe(
+        'node-a',
+      ),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Remonter d’un niveau: Pièce B' }),
+    );
+    await waitFor(() =>
+      expect(
+        nodes.find((node) => node.id === 'node-b')?.parentNodeId,
+      ).toBeNull(),
+    );
+
+    fireEvent.change(screen.getByLabelText('Page cible'), {
+      target: { value: 'page-a' },
+    });
+    const selects = container.querySelectorAll('select');
+    fireEvent.change(selects[1], { target: { value: 'root' } });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Créer un lien vers une page' }),
+    );
+    await waitFor(() =>
+      expect(
+        nodes.some((node) => node.isLink && node.pageId === 'page-a'),
+      ).toBe(true),
+    );
+    expect(await screen.findByText('Lien vers cette page')).toBeVisible();
+    expect(container.querySelectorAll('.page-tree-form')).toHaveLength(1);
+  });
+
+  it('starts with no seeded contexts and allows a rootless context', async () => {
+    const contexts: { id: string; name: string; rootNodeId: string | null }[] =
+      [];
+    const fetchMock = vi.fn(async (input: string, init?: RequestInit) => {
+      if (input.endsWith('/status'))
+        return respond(200, { isInitialized: true });
+      if (input.endsWith('/session'))
+        return respond(200, { userName: 'admin' });
+      if (input.endsWith('/settings/'))
+        return respond(200, {
+          userName: 'admin',
+          pinConfigured: false,
+          language: 'fr',
+        });
+      if (input.endsWith('/contexts/') && (!init || init.method === undefined))
+        return respond(200, contexts);
+      if (input.endsWith('/tree/')) return respond(200, []);
+      if (input.endsWith('/antiforgery'))
+        return respond(200, { token: 'contexts-token' });
+      if (input.endsWith('/contexts/') && init?.method === 'POST') {
+        contexts.push(JSON.parse(String(init.body)));
+        return respond(201, { id: contexts[0].id });
+      }
+      throw new Error(`Unexpected request: ${input} ${init?.method ?? 'GET'}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<App />);
+
+    await screen.findByRole('heading', { name: 'Administration' });
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Gérer les contextes' }),
+    );
+    await screen.findByText('Aucun contexte n’a encore été créé.');
+    fireEvent.click(screen.getByRole('button', { name: 'Créer un contexte' }));
+    fireEvent.change(screen.getByLabelText(/^Identifiant stable/), {
+      target: { value: 'invites' },
+    });
+    fireEvent.change(screen.getByLabelText(/^Nom du contexte/), {
+      target: { value: 'Invités' },
+    });
+    expect(screen.getByLabelText('Racine de navigation')).toHaveValue('');
+    fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
+
+    expect(await screen.findByText('Contexte enregistré.')).toBeVisible();
+    expect(screen.getByRole('button', { name: /Invités/ })).toBeVisible();
+    expect(contexts).toEqual([
+      { id: 'invites', name: 'Invités', rootNodeId: null },
+    ]);
   });
 });

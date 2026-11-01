@@ -22,9 +22,11 @@ public static class ContentPageEndpoints
         pages.MapDelete("/{id:guid}", DeleteAsync).AddEndpointFilter<AntiforgeryFilter>();
     }
 
-    private static async Task<IResult> CreateAsync(ContentPageInput input, ContentPageLogic logic, CancellationToken cancellationToken)
+    private static async Task<IResult> CreateAsync(CreateRequest request, ContentPageLogic logic, CancellationToken cancellationToken)
     {
-        var (result, id) = await logic.CreateAsync(input, cancellationToken);
+        if (request.Page is null || request.Placement is null)
+            return Error(ContentPageResult.InvalidInput);
+        var (result, id) = await logic.CreateAsync(request.Page, request.Placement.ParentNodeId, cancellationToken);
         return result == ContentPageResult.Success
             ? Results.Created($"/api/admin/pages/{id}", new { id })
             : Error(result);
@@ -43,7 +45,9 @@ public static class ContentPageEndpoints
 
     private static async Task<IResult> DuplicateAsync(Guid id, DuplicateRequest request, ContentPageLogic logic, CancellationToken cancellationToken)
     {
-        var (result, newId) = await logic.DuplicateAsync(id, request.Title, request.Slug, cancellationToken);
+        if (request.Placement is null) return Error(ContentPageResult.InvalidInput);
+        var (result, newId) = await logic.DuplicateAsync(
+            id, request.Title, request.Slug, request.Placement.ParentNodeId, cancellationToken);
         return result == ContentPageResult.Success
             ? Results.Created($"/api/admin/pages/{newId}", new { id = newId })
             : Error(result);
@@ -61,10 +65,14 @@ public static class ContentPageEndpoints
         ContentPageResult.NotFound => Results.Problem(statusCode: StatusCodes.Status404NotFound, title: "Page not found."),
         ContentPageResult.SlugConflict => Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "The slug is already in use."),
         ContentPageResult.VersionConflict => Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "The page has changed; reload it before saving."),
+        ContentPageResult.InvalidParent => Results.Problem(statusCode: StatusCodes.Status400BadRequest, title: "The selected parent node does not exist."),
+        ContentPageResult.HasChildren => Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "Move or remove child nodes before deleting this page."),
+        ContentPageResult.RootInUse => Results.Problem(statusCode: StatusCodes.Status409Conflict, title: "The page is still used as a context root."),
         _ => throw new ArgumentOutOfRangeException(nameof(result))
     };
 
     public sealed record UpdateRequest(long Revision, ContentPageInput? Page);
+    public sealed record CreateRequest(ContentPageInput? Page, PageTreePlacement? Placement);
     public sealed record PublicationRequest(long Revision, bool? IsPublished);
-    public sealed record DuplicateRequest(string? Title, string? Slug);
+    public sealed record DuplicateRequest(string? Title, string? Slug, PageTreePlacement? Placement);
 }

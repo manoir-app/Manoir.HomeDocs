@@ -132,8 +132,14 @@ export async function getPage(id: string): Promise<ContentPage> {
   return parsePage(await (await request(`/${encodeURIComponent(id)}`)).json());
 }
 
-export async function createPage(input: ContentPageInput): Promise<string> {
-  const response = await write('/', 'POST', input);
+export async function createPage(
+  input: ContentPageInput,
+  parentNodeId: string | null,
+): Promise<string> {
+  const response = await write('/', 'POST', {
+    page: input,
+    placement: { parentNodeId },
+  });
   const data: unknown = await response.json();
   if (!isObject(data) || typeof data.id !== 'string')
     throw new ContentError('unavailable');
@@ -164,10 +170,12 @@ export async function duplicatePage(
   title: string,
   slug: string,
   id: string,
+  parentNodeId: string | null,
 ): Promise<string> {
   const response = await write(`/${encodeURIComponent(id)}/duplicate`, 'POST', {
     title,
     slug,
+    placement: { parentNodeId },
   });
   const data: unknown = await response.json();
   if (!isObject(data) || typeof data.id !== 'string')

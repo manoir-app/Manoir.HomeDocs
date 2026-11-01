@@ -9,7 +9,10 @@ public enum ContentPageResult
     InvalidInput,
     NotFound,
     SlugConflict,
-    VersionConflict
+    VersionConflict,
+    InvalidParent,
+    HasChildren,
+    RootInUse
 }
 
 public sealed class ContentPageLogic(IContentPageOperations pages)
@@ -20,7 +23,10 @@ public sealed class ContentPageLogic(IContentPageOperations pages)
     public Task<ContentPage?> FindAsync(Guid id, CancellationToken cancellationToken = default) =>
         pages.FindAsync(id, cancellationToken);
 
-    public async Task<(ContentPageResult Result, Guid Id)> CreateAsync(ContentPageInput input, CancellationToken cancellationToken = default)
+    public async Task<(ContentPageResult Result, Guid Id)> CreateAsync(
+        ContentPageInput input,
+        Guid? parentNodeId = null,
+        CancellationToken cancellationToken = default)
     {
         var id = Guid.NewGuid();
         if (!TryCreatePage(id, input, false, 1, out var page))
@@ -28,7 +34,7 @@ public sealed class ContentPageLogic(IContentPageOperations pages)
             return (ContentPageResult.InvalidInput, Guid.Empty);
         }
 
-        return (ToResult(await pages.SaveAsync(page!, true, cancellationToken)), id);
+        return (ToResult(await pages.SaveAsync(page!, true, cancellationToken, parentNodeId)), id);
     }
 
     public async Task<ContentPageResult> UpdateAsync(Guid id, long revision, ContentPageInput input, CancellationToken cancellationToken = default)
@@ -48,11 +54,19 @@ public sealed class ContentPageLogic(IContentPageOperations pages)
         return ToResult(await pages.SaveAsync(page with { IsPublished = published }, false, cancellationToken));
     }
 
-    public async Task<(ContentPageResult Result, Guid Id)> DuplicateAsync(Guid sourceId, string? title, string? slug, CancellationToken cancellationToken = default)
+    public async Task<(ContentPageResult Result, Guid Id)> DuplicateAsync(
+        Guid sourceId,
+        string? title,
+        string? slug,
+        Guid? parentNodeId = null,
+        CancellationToken cancellationToken = default)
     {
         var source = await pages.FindAsync(sourceId, cancellationToken);
         if (source is null) return (ContentPageResult.NotFound, Guid.Empty);
-        return await CreateAsync(new ContentPageInput(title, slug, source.Category, source.Contexts, source.RequiresAuthentication, source.Markdown), cancellationToken);
+        return await CreateAsync(
+            new ContentPageInput(title, slug, source.Category, source.Contexts, source.RequiresAuthentication, source.Markdown),
+            parentNodeId,
+            cancellationToken);
     }
 
     public async Task<ContentPageResult> DeleteAsync(Guid id, long revision, CancellationToken cancellationToken = default) =>
@@ -86,6 +100,10 @@ public sealed class ContentPageLogic(IContentPageOperations pages)
         PageWriteResult.NotFound => ContentPageResult.NotFound,
         PageWriteResult.SlugConflict => ContentPageResult.SlugConflict,
         PageWriteResult.VersionConflict => ContentPageResult.VersionConflict,
+        PageWriteResult.InvalidParent => ContentPageResult.InvalidParent,
+        PageWriteResult.HasChildren => ContentPageResult.HasChildren,
+        PageWriteResult.InvalidContext => ContentPageResult.InvalidInput,
+        PageWriteResult.ContextRootInUse => ContentPageResult.RootInUse,
         _ => throw new ArgumentOutOfRangeException(nameof(result))
     };
 }

@@ -53,6 +53,55 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "PageTreeNodes",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    ParentNodeId = table.Column<Guid>(type: "TEXT", nullable: true),
+                    PageId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    IsLink = table.Column<bool>(type: "INTEGER", nullable: false),
+                    Position = table.Column<int>(type: "INTEGER", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PageTreeNodes", x => x.Id);
+                    table.CheckConstraint("CK_PageTreeNodes_Position", "\"Position\" >= 0");
+                    table.ForeignKey(
+                        name: "FK_PageTreeNodes_ContentPages_PageId",
+                        column: x => x.PageId,
+                        principalTable: "ContentPages",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_PageTreeNodes_PageTreeNodes_ParentNodeId",
+                        column: x => x.ParentNodeId,
+                        principalTable: "PageTreeNodes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UsageContexts",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
+                    Name = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
+                    RootNodeId = table.Column<Guid>(type: "TEXT", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UsageContexts", x => x.Id);
+                    table.CheckConstraint("CK_UsageContexts_Id", "length(\"Id\") BETWEEN 1 AND 64 AND \"Id\" NOT GLOB '*[^a-z0-9-]*' AND \"Id\" NOT LIKE '-%' AND \"Id\" NOT LIKE '%-' AND \"Id\" NOT LIKE '%--%'");
+                    table.CheckConstraint("CK_UsageContexts_Name", "length(\"Name\") BETWEEN 1 AND 128");
+                    table.ForeignKey(
+                        name: "FK_UsageContexts_PageTreeNodes_RootNodeId",
+                        column: x => x.RootNodeId,
+                        principalTable: "PageTreeNodes",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_ContentPageRedirects_PageId",
                 table: "ContentPageRedirects",
@@ -70,6 +119,28 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                 columns: new[] { "IsPublished", "Category" });
 
             migrationBuilder.CreateIndex(
+                name: "IX_PageTreeNodes_PageId",
+                table: "PageTreeNodes",
+                column: "PageId",
+                unique: true,
+                filter: "\"IsLink\" = 0");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PageTreeNodes_PageId_IsLink",
+                table: "PageTreeNodes",
+                columns: new[] { "PageId", "IsLink" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PageTreeNodes_ParentNodeId_Position",
+                table: "PageTreeNodes",
+                columns: new[] { "ParentNodeId", "Position" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UsageContexts_RootNodeId",
+                table: "UsageContexts",
+                column: "RootNodeId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ContentPages_Slug",
                 table: "ContentPages",
                 column: "Slug",
@@ -79,6 +150,12 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "UsageContexts");
+
+            migrationBuilder.DropTable(
+                name: "PageTreeNodes");
+
             migrationBuilder.DropTable(
                 name: "ContentPageRedirects");
 

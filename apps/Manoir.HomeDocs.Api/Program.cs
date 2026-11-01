@@ -53,7 +53,23 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
             }
             return Task.CompletedTask;
         };
+    })
+    .AddCookie(PublicPinAuthorization.Scheme, options =>
+    {
+        options.Cookie.Name = "HomeDocs.PublicPin";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.ExpireTimeSpan = PublicPinAuthorization.IdleTimeout;
+        options.SlidingExpiration = false;
+        options.Events.OnValidatePrincipal = context =>
+        {
+            if (context.Principal?.FindFirst(PublicPinAuthorization.ContextClaim) is null)
+                context.RejectPrincipal();
+            return Task.CompletedTask;
+        };
     });
+builder.Services.AddSingleton<PublicPinAuthorization>();
 builder.Services.AddAuthorization();
 builder.Services.AddRateLimiter(options =>
 {
@@ -66,6 +82,10 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("public-pin", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 5, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 builder.Services.AddHomeDocsSqlite(provider =>
     Path.Combine(GetDataPath(provider.GetRequiredService<IConfiguration>(), provider.GetRequiredService<IWebHostEnvironment>()), "database", "homedocs.db"));
@@ -119,6 +139,9 @@ app.MapOpenApi();
 app.MapAdministratorEndpoints();
 app.MapAdministratorSettingsEndpoints();
 app.MapContentPageEndpoints();
+app.MapPageTreeEndpoints();
+app.MapUsageContextEndpoints();
+app.MapDemoDataEndpoints();
 app.MapGet("/admin/login", (HttpContext context) => SendIndex(context, adminRoot));
 app.MapGet("/admin/setup", (HttpContext context) => SendIndex(context, adminRoot));
 app.MapGet("/admin", async (HttpContext context) =>

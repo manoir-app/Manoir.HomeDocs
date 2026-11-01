@@ -19,3 +19,15 @@ internal sealed class ContentPageRedirectEntity
     public Guid PageId { get; set; }
     public ContentPageEntity Page { get; set; } = null!;
 }
+
+internal sealed class PageTreeNodeEntity
+{
+    public Guid Id { get; set; }
+    public Guid? ParentNodeId { get; set; }
+    public PageTreeNodeEntity? ParentNode { get; set; }
+    public List<PageTreeNodeEntity> Children { get; set; } = [];
+    public Guid PageId { get; set; }
+    public ContentPageEntity Page { get; set; } = null!;
+    public bool IsLink { get; set; }
+    public int Position { get; set; }
+}

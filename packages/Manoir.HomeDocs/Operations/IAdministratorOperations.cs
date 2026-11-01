@@ -8,6 +8,8 @@ public interface IAdministratorOperations
 
     Task<AdministratorCredentials?> FindByNormalizedUserNameAsync(string normalizedUserName, CancellationToken cancellationToken = default);
 
+    Task<string?> GetPinHashAsync(CancellationToken cancellationToken = default);
+
     Task<bool> UpdateCredentialsAsync(
         string currentNormalizedUserName,
         string userName,

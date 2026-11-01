@@ -17,7 +17,9 @@ function navigate(phase: Phase) {
   if (
     phase === 'authenticated' &&
     (window.location.pathname.startsWith('/admin/settings/') ||
-      window.location.pathname.startsWith('/admin/pages'))
+      window.location.pathname.startsWith('/admin/pages') ||
+      window.location.pathname.startsWith('/admin/tree') ||
+      window.location.pathname.startsWith('/admin/contexts'))
   ) {
     return;
   }

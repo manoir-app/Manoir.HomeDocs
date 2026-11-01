@@ -14,8 +14,11 @@ import { AdminSettings } from './AdminSettings';
 import { adminRouteFromPath, adminRoutePath } from './adminRoutes';
 import type { AdminRoute } from './adminRoutes';
 import { AdminContent } from './AdminContent';
+import { AdminPageTree } from './AdminPageTree';
+import { AdminContexts } from './AdminContexts';
 import { useAdminSettings } from './useAdminSettings';
 import { useAdminAuth } from './useAdminAuth';
+import { DemoInstallError, installDemoData } from './adminDemoApi';
 import './app.css';
 
 export function App() {
@@ -29,8 +32,29 @@ export function App() {
   const [adminRoute, setAdminRoute] = useState<AdminRoute>(() =>
     adminRouteFromPath(window.location.pathname),
   );
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoNotice, setDemoNotice] = useState<
+    | 'installed'
+    | 'alreadyInstalled'
+    | 'conflict'
+    | 'unavailable'
+    | 'sessionExpired'
+    | undefined
+  >();
   const language = adminSettings.state.settings?.language ?? languageOverride;
   const t = (key: Parameters<typeof translate>[1]) => translate(language, key);
+  const demoNoticeText =
+    demoNotice === 'installed'
+      ? t('demoInstalled')
+      : demoNotice === 'alreadyInstalled'
+        ? t('demoAlreadyInstalled')
+        : demoNotice === 'conflict'
+          ? t('demoConflict')
+          : demoNotice === 'sessionExpired'
+            ? t('demoSessionExpired')
+            : demoNotice === 'unavailable'
+              ? t('demoUnavailable')
+              : undefined;
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -61,6 +85,21 @@ export function App() {
         await adminSettings.changeLanguage(value);
     } else {
       setLanguageOverride(value);
+    }
+  };
+
+  const installDemo = async () => {
+    setDemoBusy(true);
+    setDemoNotice(undefined);
+    try {
+      setDemoNotice(await installDemoData());
+    } catch (error) {
+      const notice =
+        error instanceof DemoInstallError ? error.reason : 'unavailable';
+      setDemoNotice(notice);
+      if (notice === 'sessionExpired') queueMicrotask(() => void refresh());
+    } finally {
+      setDemoBusy(false);
     }
   };
 
@@ -137,6 +176,24 @@ export function App() {
         />
       );
     }
+    if (adminRoute?.type === 'tree') {
+      return (
+        <AdminPageTree
+          translate={t}
+          onNavigate={navigateAdmin}
+          onSessionExpired={() => refresh()}
+        />
+      );
+    }
+    if (adminRoute?.type === 'contexts') {
+      return (
+        <AdminContexts
+          translate={t}
+          onNavigate={navigateAdmin}
+          onSessionExpired={() => refresh()}
+        />
+      );
+    }
     if (adminRoute?.type === 'settings' && !adminSettings.state.settings) {
       return (
         <main className="mn-kit-theme admin-status" role="status">
@@ -163,6 +220,26 @@ export function App() {
           <h1>{t('admin')}</h1>
           <p>{t('ready')}</p>
           {state.notice && <p role="alert">{t(state.notice)}</p>}
+          <section className="demo-install">
+            <h2>{t('demoData')}</h2>
+            <p>{t('demoDescription')}</p>
+            <Button disabled={demoBusy} onClick={() => void installDemo()}>
+              {demoBusy ? t('demoInstalling') : t('installDemo')}
+            </Button>
+            {demoNotice && (
+              <p
+                role={
+                  demoNotice === 'installed' ||
+                  demoNotice === 'alreadyInstalled'
+                    ? 'status'
+                    : 'alert'
+                }
+                aria-live="polite"
+              >
+                {demoNoticeText}
+              </p>
+            )}
+          </section>
           <Button
             variant="secondary"
             onClick={() =>
@@ -176,6 +253,18 @@ export function App() {
             onClick={() => navigateAdmin({ type: 'content-list' })}
           >
             {t('openContent')}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => navigateAdmin({ type: 'tree' })}
+          >
+            {t('openTree')}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => navigateAdmin({ type: 'contexts' })}
+          >
+            {t('openContexts')}
           </Button>
           <Button
             variant="secondary"

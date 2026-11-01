@@ -47,7 +47,11 @@ internal sealed class ContentPageOperations(HomeDocsDbContext context, ContentFi
     private async Task EnsureConsistencyAsync(CancellationToken cancellationToken) =>
         files.EnsureConsistent(await context.ContentPages.AsNoTracking().Select(page => page.FileId).ToListAsync(cancellationToken));
 
-    public async Task<PageWriteResult> SaveAsync(ContentPage page, bool isNew, CancellationToken cancellationToken = default)
+    public async Task<PageWriteResult> SaveAsync(
+        ContentPage page,
+        bool isNew,
+        CancellationToken cancellationToken = default,
+        Guid? parentNodeId = null)
     {
         Validate(page);
         await using var gate = await files.LockAsync(cancellationToken);
@@ -58,6 +62,22 @@ internal sealed class ContentPageOperations(HomeDocsDbContext context, ContentFi
         if (isNew && existing is not null) return PageWriteResult.VersionConflict;
         if (!isNew && existing is null) return PageWriteResult.NotFound;
         if (!isNew && existing!.Revision != page.Revision) return PageWriteResult.VersionConflict;
+        if (isNew && parentNodeId is not null &&
+            !await context.PageTreeNodes.AnyAsync(node => node.Id == parentNodeId, cancellationToken))
+            return PageWriteResult.InvalidParent;
+        if (page.Contexts.Count > 0 &&
+            await context.UsageContexts.CountAsync(usageContext => page.Contexts.Contains(usageContext.Id), cancellationToken) != page.Contexts.Count)
+            return PageWriteResult.InvalidContext;
+        if (existing is not null && page.Contexts.Count > 0)
+        {
+            var contextRoots = await context.UsageContexts.AsNoTracking()
+                .Where(usageContext => usageContext.RootNodeId != null &&
+                    context.PageTreeNodes.Any(node => node.Id == usageContext.RootNodeId && node.PageId == page.Id))
+                .Select(usageContext => usageContext.Id)
+                .ToListAsync(cancellationToken);
+            if (contextRoots.Any(contextId => !page.Contexts.Contains(contextId, StringComparer.Ordinal)))
+                return PageWriteResult.ContextRootInUse;
+        }
         if (await context.ContentPages.AnyAsync(item => item.Slug == page.Slug && item.Id != page.Id, cancellationToken))
             return PageWriteResult.SlugConflict;
         if (existing is not null) files.EnsureExists(existing.FileId);
@@ -91,7 +111,20 @@ internal sealed class ContentPageOperations(HomeDocsDbContext context, ContentFi
             target.IsPublished = page.IsPublished;
             target.FileId = fileId;
             target.Revision = revision;
-            if (existing is null) context.ContentPages.Add(target);
+            if (existing is null)
+            {
+                context.ContentPages.Add(target);
+                var position = await context.PageTreeNodes.CountAsync(
+                    node => node.ParentNodeId == parentNodeId, cancellationToken);
+                context.PageTreeNodes.Add(new PageTreeNodeEntity
+                {
+                    Id = Guid.NewGuid(),
+                    ParentNodeId = parentNodeId,
+                    PageId = page.Id,
+                    IsLink = false,
+                    Position = position
+                });
+            }
             await context.SaveChangesAsync(cancellationToken);
             commitStarted = true;
             await transaction.CommitAsync(cancellationToken);
@@ -128,8 +161,27 @@ internal sealed class ContentPageOperations(HomeDocsDbContext context, ContentFi
         var page = await context.ContentPages.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (page is null) return PageWriteResult.NotFound;
         if (page.Revision != revision) return PageWriteResult.VersionConflict;
+        var pageNodes = await context.PageTreeNodes.Where(node => node.PageId == id).ToListAsync(cancellationToken);
+        var pageNodeIds = pageNodes.Select(node => node.Id).ToHashSet();
+        if (pageNodeIds.Count > 0 && await context.PageTreeNodes.AnyAsync(
+            child => child.ParentNodeId != null && pageNodeIds.Contains(child.ParentNodeId.Value), cancellationToken))
+            return PageWriteResult.HasChildren;
+        if (pageNodeIds.Count > 0 && await context.UsageContexts.AnyAsync(
+            usageContext => usageContext.RootNodeId != null && pageNodeIds.Contains(usageContext.RootNodeId.Value), cancellationToken))
+            return PageWriteResult.ContextRootInUse;
         files.EnsureExists(page.FileId);
+        var affectedParents = pageNodes.Select(node => node.ParentNodeId).Distinct().ToArray();
+        context.PageTreeNodes.RemoveRange(pageNodes);
         context.ContentPages.Remove(page);
+        foreach (var parentId in affectedParents)
+        {
+            var siblings = await context.PageTreeNodes
+                .Where(node => node.ParentNodeId == parentId && !pageNodeIds.Contains(node.Id))
+                .OrderBy(node => node.Position)
+                .ToListAsync(cancellationToken);
+            for (var index = 0; index < siblings.Count; index++)
+                siblings[index].Position = index;
+        }
         await context.SaveChangesAsync(cancellationToken);
         try { await transaction.CommitAsync(cancellationToken); }
         catch (Exception error)

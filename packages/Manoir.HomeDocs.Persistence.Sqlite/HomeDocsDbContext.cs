@@ -7,6 +7,8 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
     internal DbSet<AdministratorEntity> Administrators => Set<AdministratorEntity>();
     internal DbSet<ContentPageEntity> ContentPages => Set<ContentPageEntity>();
     internal DbSet<ContentPageRedirectEntity> ContentPageRedirects => Set<ContentPageRedirectEntity>();
+    internal DbSet<PageTreeNodeEntity> PageTreeNodes => Set<PageTreeNodeEntity>();
+    internal DbSet<UsageContextEntity> UsageContexts => Set<UsageContextEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -52,6 +54,36 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
             entity.HasKey(redirect => redirect.Slug);
             entity.Property(redirect => redirect.Slug).HasMaxLength(80);
             entity.HasOne(redirect => redirect.Page).WithMany().HasForeignKey(redirect => redirect.PageId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PageTreeNodeEntity>(entity =>
+        {
+            entity.ToTable("PageTreeNodes", table =>
+                table.HasCheckConstraint("CK_PageTreeNodes_Position", "\"Position\" >= 0"));
+            entity.HasKey(node => node.Id);
+            entity.Property(node => node.Id).ValueGeneratedNever();
+            entity.Property(node => node.PageId).IsRequired();
+            entity.HasOne(node => node.Page).WithMany().HasForeignKey(node => node.PageId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(node => node.ParentNode).WithMany(node => node.Children)
+                .HasForeignKey(node => node.ParentNodeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(node => new { node.ParentNodeId, node.Position });
+            entity.HasIndex(node => new { node.PageId, node.IsLink });
+            entity.HasIndex(node => node.PageId).IsUnique().HasFilter("\"IsLink\" = 0");
+        });
+
+        modelBuilder.Entity<UsageContextEntity>(entity =>
+        {
+            entity.ToTable("UsageContexts", table =>
+            {
+                table.HasCheckConstraint("CK_UsageContexts_Id", "length(\"Id\") BETWEEN 1 AND 64 AND \"Id\" NOT GLOB '*[^a-z0-9-]*' AND \"Id\" NOT LIKE '-%' AND \"Id\" NOT LIKE '%-' AND \"Id\" NOT LIKE '%--%'");
+                table.HasCheckConstraint("CK_UsageContexts_Name", "length(\"Name\") BETWEEN 1 AND 128");
+            });
+            entity.HasKey(context => context.Id);
+            entity.Property(context => context.Id).HasMaxLength(64).ValueGeneratedNever();
+            entity.Property(context => context.Name).HasMaxLength(128).IsRequired();
+            entity.HasOne(context => context.RootNode).WithMany()
+                .HasForeignKey(context => context.RootNodeId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasIndex(context => context.RootNodeId);
         });
     }
 }

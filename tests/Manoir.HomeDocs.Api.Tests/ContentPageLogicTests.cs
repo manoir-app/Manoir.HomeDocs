@@ -82,7 +82,11 @@ public sealed class ContentPageLogicTests
         public Task<ContentPage?> FindAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(Items.GetValueOrDefault(id));
 
-        public Task<PageWriteResult> SaveAsync(ContentPage page, bool isNew, CancellationToken cancellationToken = default)
+        public Task<PageWriteResult> SaveAsync(
+            ContentPage page,
+            bool isNew,
+            CancellationToken cancellationToken = default,
+            Guid? parentNodeId = null)
         {
             if (Items.Values.Any(item => item.Id != page.Id && item.Slug == page.Slug))
                 return Task.FromResult(PageWriteResult.SlugConflict);

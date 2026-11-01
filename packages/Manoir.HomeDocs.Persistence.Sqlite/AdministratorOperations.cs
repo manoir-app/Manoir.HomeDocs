@@ -24,6 +24,12 @@ public sealed class AdministratorOperations(HomeDocsDbContext context) : IAdmini
                 administrator.PinHash, administrator.Language))
             .SingleOrDefaultAsync(cancellationToken);
 
+    public Task<string?> GetPinHashAsync(CancellationToken cancellationToken = default) =>
+        context.Administrators.AsNoTracking()
+            .Where(administrator => administrator.Id == 1)
+            .Select(administrator => administrator.PinHash)
+            .SingleOrDefaultAsync(cancellationToken);
+
     public async Task<bool> UpdateCredentialsAsync(
         string currentNormalizedUserName,
         string userName,

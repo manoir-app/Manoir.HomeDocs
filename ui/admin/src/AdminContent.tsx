@@ -8,11 +8,15 @@ import { Button, Card, Field, TextField } from '@manoir-app/core-admin-ui-kit';
 import ReactMarkdown from 'react-markdown';
 import * as api from './adminContentApi';
 import type { ContentPage, ContentPageInput } from './adminContentApi';
+import * as contextApi from './adminContextApi';
+import type { AdminUsageContext } from './adminContextApi';
+import * as treeApi from './adminTreeApi';
+import type { AdminTreeNode } from './adminTreeApi';
 import type { AdminRoute } from './adminRoutes';
 import type { TranslationKey } from './translations';
 
 interface Props {
-  route: Exclude<AdminRoute, { type: 'settings' } | null>;
+  route: Exclude<AdminRoute, { type: 'settings' | 'tree' | 'contexts' } | null>;
   translate: (key: TranslationKey) => string;
   onNavigate: (route: AdminRoute) => void;
   onSessionExpired: () => void;
@@ -133,6 +137,12 @@ function PageList({
         <Button onClick={() => onNavigate({ type: 'content-new' })}>
           {t('createPage')}
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => onNavigate({ type: 'tree' })}
+        >
+          {t('openTree')}
+        </Button>
       </div>
       {error && <p role="alert">{t(failureKey(error))}</p>}
       {loading ? (
@@ -186,13 +196,18 @@ function PageEditor({
 }) {
   const [page, setPage] = useState<ContentPage>();
   const [form, setForm] = useState<ContentPageInput>(emptyPage);
-  const [contextsText, setContextsText] = useState('');
+  const [contexts, setContexts] = useState<AdminUsageContext[]>([]);
+  const [contextsLoading, setContextsLoading] = useState(true);
+  const [treeNodes, setTreeNodes] = useState<AdminTreeNode[]>([]);
+  const [placementChoice, setPlacementChoice] = useState('');
+  const [placementLoading, setPlacementLoading] = useState(!pageId);
   const [preview, setPreview] = useState(false);
   const [loading, setLoading] = useState(Boolean(pageId));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<api.ContentFailure>();
   const [notice, setNotice] = useState<TranslationKey>();
   const revision = useRef(0);
+  const contextsRevision = useRef(0);
 
   const reload = useCallback(async () => {
     if (!pageId) return;
@@ -211,7 +226,6 @@ function PageEditor({
           requiresAuthentication: result.requiresAuthentication,
           markdown: result.markdown,
         });
-        setContextsText(result.contexts.join(', '));
       }
     } catch (reason) {
       if (requestId === revision.current) {
@@ -239,6 +253,71 @@ function PageEditor({
     };
   }, [pageId, reload]);
 
+  useEffect(() => {
+    const activeRevision = contextsRevision;
+    let active = true;
+    queueMicrotask(() => {
+      if (!active) return;
+      const requestId = ++activeRevision.current;
+      void contextApi
+        .listContexts()
+        .then((result) => {
+          if (requestId === activeRevision.current) setContexts(result);
+        })
+        .catch((reason) => {
+          if (requestId !== activeRevision.current) return;
+          const contextFailure =
+            reason instanceof contextApi.ContextError
+              ? reason.reason
+              : 'unavailable';
+          const failure =
+            contextFailure === 'invalidRoot' ? 'invalid' : contextFailure;
+          setError(failure);
+          if (failure === 'sessionExpired') onSessionExpired();
+        })
+        .finally(() => {
+          if (requestId === activeRevision.current) setContextsLoading(false);
+        });
+    });
+    return () => {
+      active = false;
+      activeRevision.current++;
+    };
+  }, [onSessionExpired]);
+
+  useEffect(() => {
+    const activeRevision = revision;
+    let active = true;
+    if (!pageId) {
+      queueMicrotask(() => {
+        if (!active) return;
+        const requestId = ++activeRevision.current;
+        void treeApi
+          .listTree()
+          .then((nodes) => {
+            if (requestId === activeRevision.current) setTreeNodes(nodes);
+          })
+          .catch((reason) => {
+            if (requestId !== activeRevision.current) return;
+            const failure =
+              reason instanceof treeApi.TreeError
+                ? reason.reason
+                : 'unavailable';
+            setError(failure);
+            if (failure === 'sessionExpired') onSessionExpired();
+          })
+          .finally(() => {
+            if (requestId === activeRevision.current)
+              setPlacementLoading(false);
+          });
+      });
+    }
+    return () => {
+      active = false;
+      activeRevision.current++;
+    };
+  }, [onSessionExpired, pageId]);
+
   const update = <K extends keyof ContentPageInput>(
     key: K,
     value: ContentPageInput[K],
@@ -251,10 +330,7 @@ function PageEditor({
   const toPayload = (): ContentPageInput => ({
     ...form,
     title: form.title.trim(),
-    contexts: contextsText
-      .split(',')
-      .map((context) => context.trim())
-      .filter(Boolean),
+    contexts: form.contexts,
   });
 
   const save = async (event: FormEvent<HTMLFormElement>) => {
@@ -269,10 +345,15 @@ function PageEditor({
         const updated = await api.getPage(page.id);
         setPage(updated);
         setForm({ ...payload, contexts: updated.contexts });
-        setContextsText(updated.contexts.join(', '));
         setNotice('pageSaved');
       } else {
-        const id = await api.createPage(payload);
+        if (!placementChoice) {
+          setError('invalid');
+          return;
+        }
+        const parentNodeId =
+          placementChoice === 'root' ? null : placementChoice;
+        const id = await api.createPage(payload, parentNodeId);
         onNavigate({ type: 'content-edit', id });
       }
     } catch (reason) {
@@ -305,27 +386,6 @@ function PageEditor({
         reason instanceof api.ContentError ? reason.reason : 'unavailable';
       setError(failure);
       if (failure === 'sessionExpired') onSessionExpired();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const duplicate = async () => {
-    if (!page) return;
-    setBusy(true);
-    setError(undefined);
-    setNotice(undefined);
-    try {
-      const id = await api.duplicatePage(
-        `${page.title} (copie)`,
-        `${page.slug}-copie`,
-        page.id,
-      );
-      onNavigate({ type: 'content-edit', id });
-    } catch (reason) {
-      const failure =
-        reason instanceof api.ContentError ? reason.reason : 'unavailable';
-      setError(failure);
     } finally {
       setBusy(false);
     }
@@ -380,6 +440,12 @@ function PageEditor({
         >
           {t('pages')}
         </Button>
+        <Button
+          variant="secondary"
+          onClick={() => onNavigate({ type: 'tree' })}
+        >
+          {t('tree')}
+        </Button>
       </div>
       {page && (
         <p className="content-state">
@@ -425,13 +491,51 @@ function PageEditor({
               ))}
             </select>
           </label>
-          <Field htmlFor="page-contexts" label={t('contexts')}>
-            <TextField
-              id="page-contexts"
-              value={contextsText}
-              onChange={(event) => setContextsText(event.target.value)}
-            />
-          </Field>
+          <fieldset className="content-contexts" disabled={contextsLoading}>
+            <legend>{t('availableContexts')}</legend>
+            <p className="content-help">{t('universalContext')}</p>
+            {contexts.map((usageContext) => (
+              <label key={usageContext.id} className="content-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.contexts.includes(usageContext.id)}
+                  onChange={(event) =>
+                    update(
+                      'contexts',
+                      event.target.checked
+                        ? [...form.contexts, usageContext.id]
+                        : form.contexts.filter(
+                            (item) => item !== usageContext.id,
+                          ),
+                    )
+                  }
+                />
+                <span>
+                  {usageContext.name} ({usageContext.id})
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          {!page && (
+            <label className="content-field" htmlFor="page-placement">
+              <span>{t('placement')}</span>
+              <select
+                id="page-placement"
+                required
+                disabled={placementLoading || Boolean(error)}
+                value={placementChoice}
+                onChange={(event) => setPlacementChoice(event.target.value)}
+              >
+                <option value="">{t('choosePlacement')}</option>
+                <option value="root">{t('root')}</option>
+                {treeNodes.map((node) => (
+                  <option key={node.id} value={node.id}>
+                    {`${node.title} · /${node.slug}${node.isLink ? ` · ${t('linkNode')}` : ''}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="content-checkbox">
             <input
               type="checkbox"
@@ -477,7 +581,10 @@ function PageEditor({
           />
         )}
         <div className="content-actions">
-          <Button type="submit" disabled={busy}>
+          <Button
+            type="submit"
+            disabled={busy || contextsLoading || Boolean(error)}
+          >
             {t('savePage')}
           </Button>
           {page && (
@@ -489,14 +596,6 @@ function PageEditor({
                 onClick={() => void togglePublication()}
               >
                 {t(page.isPublished ? 'unpublishPage' : 'publishPage')}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy}
-                onClick={() => void duplicate()}
-              >
-                {t('duplicatePage')}
               </Button>
               <Button
                 type="button"

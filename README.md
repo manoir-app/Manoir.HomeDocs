@@ -6,9 +6,10 @@ distinctes : le site public et le back-office.
 
 ## État actuel
 
-Le premier compte administrateur peut être créé localement ; les routes et API
-d'administration sont protégées côté serveur. Les données de configuration sont
-stockées dans SQLite. La gestion de contenu et les connecteurs restent à venir.
+Le compte administrateur, la gestion Markdown, l’arborescence et les contextes
+sont disponibles. Le lecteur public applique les profils d’affichage et la
+protection des pages par PIN ; les contenus fictifs ne sont installés qu’après
+une action explicite dans l’administration. Les connecteurs restent à venir.
 Le back-office utilise le kit de composants MaNoir ; le site public possède ses
 propres composants.
 
@@ -108,9 +109,9 @@ les clés enregistrées sur disque ne sont pas chiffrées par l'application.
 L'API d'administration `/api/admin/pages` permet de lister, créer, lire,
 modifier, dupliquer, publier, remettre en brouillon et supprimer les pages.
 Toutes ces opérations exigent une session administrateur ; les écritures exigent
-aussi le jeton antiforgery décrit par `/api/admin/auth/antiforgery`. Aucun
-endpoint public ne donne accès au contenu à ce stade. L'éditeur et l'affichage
-public seront ajoutés ultérieurement.
+aussi le jeton antiforgery décrit par `/api/admin/auth/antiforgery`. Les pages
+publiées sont consultables via l’API publique ; les brouillons restent réservés
+à l’administration.
 
 Une page possède un titre, un slug, une catégorie, une liste de contextes
 (vide pour tous), un indicateur de protection et son Markdown. Les catégories
@@ -131,24 +132,45 @@ L'API accepte les opérations suivantes :
 | `POST /api/admin/pages/{id}/publication` | Publier ou remettre en brouillon |
 | `POST /api/admin/pages/{id}/duplicate` | Dupliquer en fournissant un titre et un slug |
 | `DELETE /api/admin/pages/{id}?revision={revision}` | Supprimer une page |
+| `GET /api/admin/tree/` | Lister les nœuds de l’arborescence |
+| `GET /api/admin/tree/nodes/{id}/target` | Résoudre un élément vers l’identifiant de sa page |
+| `POST /api/admin/tree/links` | Ajouter un lien vers une page existante |
+| `PUT /api/admin/tree/nodes/{id}` | Déplacer et réordonner un nœud |
+| `DELETE /api/admin/tree/nodes/{id}` | Retirer un lien sans supprimer sa page cible |
+| `GET /api/admin/contexts/` | Lister les contextes |
+| `POST /api/admin/contexts/` | Créer un contexte |
+| `PUT /api/admin/contexts/{id}` | Modifier nom, identifiant ou racine |
+| `DELETE /api/admin/contexts/{id}` | Supprimer un contexte inutilisé |
+| `POST /api/admin/demo/install` | Installer explicitement les contenus fictifs |
+| `GET /api/public/navigation?context={id}&profile={profile}[&device={id}]` | Lire la racine et les pages visibles du contexte |
+| `GET /api/public/pages/{slug}?context={id}&profile={profile}[&device={id}]` | Lire une page ou être redirigé vers la racine |
+| `POST /api/public/access/pin` | Vérifier le PIN et autoriser le contexte |
+| `GET /api/public/access/status?context={id}&profile={profile}` | Renouveler et vérifier l’autorisation temporaire |
+| `POST /api/public/access/logout` | Révoquer l’autorisation PIN |
 
 Par exemple, une création reçoit un objet JSON de cette forme :
 
 ```json
 {
-  "title": "Cuisine",
-  "slug": "cuisine",
-  "category": "piece",
-  "contexts": ["invites"],
-  "requiresAuthentication": false,
-  "markdown": "# Cuisine\n"
+  "page": {
+    "title": "Cuisine",
+    "slug": "cuisine",
+    "category": "piece",
+    "contexts": ["invites"],
+    "requiresAuthentication": false,
+    "markdown": "# Cuisine\n"
+  },
+  "placement": {
+    "parentNodeId": null
+  }
 }
 ```
 
-La modification reçoit `{ "revision": 1, "page": { ... } }`, avec le même
-objet de page que pour la création. La publication reçoit
+`parentNodeId: null` place la page à la racine ; sinon, choisir l’identifiant
+d’un nœud parent existant. Ce choix est obligatoire. La modification reçoit
+`{ "revision": 1, "page": { ... } }`, avec le même objet de page. La publication reçoit
 `{ "revision": 1, "isPublished": true }` et la duplication
-`{ "title": "Copie", "slug": "copie" }`.
+`{ "title": "Copie", "slug": "copie", "placement": { "parentNodeId": null } }`.
 
 La création et la duplication produisent des brouillons. Une modification d'une
 page déjà publiée prend effet dès son enregistrement. Chaque page contient une
@@ -156,6 +178,59 @@ révision : la modification, la publication et la suppression doivent fournir la
 révision lue ; une révision périmée renvoie 409. Un slug publié modifié conserve
 une redirection, mais la réutilisation de son ancien slug a priorité sur celle-ci.
 L'historique et la restauration des versions relèvent d'une étape ultérieure.
+
+## Arborescence et liens
+
+Depuis **Gérer l’arborescence**, organiser les pages à la racine ou sous un nœud
+existant. Il n’y a pas de migration de contenu ; toute nouvelle page demande un
+emplacement explicite. Dans le JSON de création,
+`placement.parentNodeId` vaut `null` pour la racine ou l’identifiant du nœud
+parent.
+
+Un lien est un nœud séparé qui référence directement une page réelle ; il ne
+copie pas son Markdown et ne peut pas cibler un autre lien. La même page peut
+ainsi apparaître sous plusieurs parents. Déplacer un nœud sous lui-même ou l’un
+de ses descendants est refusé ; un simple lien vers une page parente reste
+possible. Seuls les liens peuvent être retirés de l’arborescence ; une page est
+supprimée depuis son éditeur. La suppression d’une page qui contient des
+sous-pages est refusée jusqu’à leur déplacement ou leur retrait.
+Les commandes Monter, Descendre, Rendre sous-page et Remonter d’un niveau
+offrent une alternative clavier au glisser-déposer. Le contenu d’un nœud se
+modifie en ouvrant sa page cible.
+
+## Contextes et consultation locale
+
+Aucun contexte n’est créé par défaut. Depuis **Gérer les contextes**, créer un
+identifiant stable et un nom ; une racine peut être laissée vide et définie plus
+tard. Une page à contextes vides est disponible partout ; sinon ses identifiants
+doivent désigner des contextes existants.
+
+Toute invocation publique doit fournir un profil parmi `desktop`, `mobile`,
+`tablet-wall`, `tablet-dock` et `tv`. Le paramètre `device` est facultatif et
+n’influence pas les droits. Un profil absent ou inconnu, ou un contexte absent
+ou inconnu, répond 404. Les liens du lecteur, les URL de Markdown local et les
+redirections conservent le contexte, le profil et le device.
+
+`GET /api/public/navigation?context={id}&profile={profile}` retourne la racine
+et ses pages publiées, disponibles dans le contexte. Un contexte sans racine
+répond 404 pour la navigation, mais l’accès direct à une page disponible reste
+possible. Si une page demandée n’est pas disponible dans le contexte, l’API
+redirige vers la racine lorsqu’elle existe.
+
+Une page protégée ne retourne pas son Markdown avant vérification du PIN. Le
+cookie d’autorisation est HttpOnly, lié au contexte, expire après 30 secondes
+d’inactivité et est renouvelé lors d’une activité vérifiée par le serveur. Le
+PIN est limité à cinq tentatives par minute et par adresse IP. Le HTML brut et
+les liens externes ne sont pas interprétés par le lecteur.
+
+## Contenus fictifs
+
+Aucun contexte ni contenu n’est créé au démarrage. Depuis la page d’accueil de
+l’administration, utiliser **Installer les données fictives** pour ajouter les
+contextes `invites`, `menage` et `habitant`, avec des pages de démonstration
+explicitement marquées comme fictives. L’opération peut être relancée sans
+dupliquer ni remplacer les données existantes ; un conflit d’identifiant est
+signalé sans écraser les pages ou contextes concernés.
 
 Pour une sauvegarde cohérente, arrêter l'application avant de copier ensemble
 les répertoires `database` et `content`, ainsi que les autres données
@@ -182,8 +257,8 @@ le mot de passe existant. Le PIN est exactement composé de six chiffres ; il
 peut être supprimé depuis la même page. Le PIN est stocké sous forme de hash
 ASP.NET Core Identity et seul son état configuré ou non est renvoyé à l’interface.
 Les modifications sensibles sont limitées à dix requêtes par minute et par
-adresse IP. La vérification et l’usage du PIN pour protéger les pages ne sont
-pas encore disponibles ; ils relèvent de HD-15.
+adresse IP. Une page protégée ne retourne son contenu qu’après vérification du
+PIN ; l’autorisation temporaire est liée au contexte.
 
 La page Home Assistant est un emplacement réservé : aucun jeton ni paramètre de
 connexion n’y est stocké et aucun test de connexion n’est disponible. La
@@ -200,9 +275,9 @@ HTML brut et ne l’exécute pas.
 
 L’enregistrement crée un brouillon ; une page déjà publiée est modifiée dès
 l’enregistrement. Publier ou repasser en brouillon se fait séparément. Les
-conflits de modification sont signalés et demandent de recharger la page. La
-case de protection enregistre les métadonnées, mais le contrôle par PIN et la
-consultation publique ne sont pas encore disponibles (HD-15 et HD-07).
+conflits de modification sont signalés et demandent de recharger la page. Une
+page publiée est consultable sur le site public selon ses contextes et son
+éventuelle protection par PIN.
 
 ## Docker Compose
 
@@ -247,8 +322,10 @@ docker compose config --quiet
 ```
 
 Les tests .NET couvrent notamment les migrations SQLite, la concurrence,
-l'authentification, les refus et la persistance après redémarrage. Les tests
-React couvrent l'onboarding, la connexion, la déconnexion et les erreurs.
+l'authentification, les refus, la protection PIN, la limitation des tentatives
+et l'installation idempotente des données fictives. Les tests React couvrent
+l'onboarding, l’administration, l’action d’installation explicite, le lecteur
+public, le rendu Markdown sûr, les liens contextualisés et le verrouillage PIN.
 
 Le package du kit MaNoir `0.1.78` publie des chemins de déclarations TypeScript
 incorrects dans son point d'entrée ; `ui/admin/tsconfig.json` référence ses
@@ -259,3 +336,23 @@ le point d'entrée normal. Retirer cet alias lorsque le package sera corrigé.
 des vulnérabilités modérées liées à `minimatch` dans les dépendances de lint ;
 elles ne sont pas incluses dans l'image d'exécution. Ne pas utiliser
 `npm audit fix --force` sans vérifier les changements de versions proposés.
+
+## Publier le backlog dans GitHub
+
+Le script PowerShell [publish-backlog-issues.ps1](./scripts/publish-backlog-issues.ps1)
+crée les issues de [specs/backlog.md](./specs/backlog.md) dans
+`manoir-app/Manoir.HomeDocs`. Il nécessite [GitHub CLI](https://cli.github.com/)
+et une authentification autorisée à créer et modifier les issues du dépôt :
+
+```powershell
+winget install --id GitHub.cli --exact
+# Ouvrir un nouveau terminal après l'installation.
+gh auth login --hostname github.com --web
+.\scripts\publish-backlog-issues.ps1 -Preview
+.\scripts\publish-backlog-issues.ps1
+```
+
+Le script reconnaît les issues existantes à leur identifiant `HD-xx`, y compris
+si elles sont fermées, et ne les recrée pas. Il ne modifie les descriptions
+que pour compléter les liens entre issues créées par ce script. En cas
+d'interruption, relancez-le ; ne lancez pas plusieurs exemplaires en parallèle.

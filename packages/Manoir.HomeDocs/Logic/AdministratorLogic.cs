@@ -107,6 +107,13 @@ public sealed class AdministratorLogic(IAdministratorOperations administrators, 
         return updated ? AdministratorChangeResult.Updated : AdministratorChangeResult.Conflict;
     }
 
+    public async Task<bool> VerifyPinAsync(string? pin, CancellationToken cancellationToken = default)
+    {
+        if (pin is null || !PinPattern.IsMatch(pin)) return false;
+        var pinHash = await administrators.GetPinHashAsync(cancellationToken);
+        return pinHash is not null && passwords.Verify(pinHash, pin);
+    }
+
     public async Task<AdministratorChangeResult> UpdateLanguageAsync(
         string? currentUserName,
         string? language,

@@ -115,15 +115,17 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 **Périmètre**
 
 - Créer et organiser des pages et sous-pages dans une arborescence commune.
-- Permettre qu’une sous-page soit un lien vers une autre page ou sous-page sans dupliquer son contenu.
-- Réordonner par glisser-déposer avec alternative clavier ; signaler les liens invalides et les boucles de résolution.
+- Exiger un choix explicite de la racine ou d’un nœud parent lors de la création ; ne pas rétro-remplir les contenus existants.
+- Permettre qu’une sous-page soit un lien vers une page existante, sans copie du contenu ni lien vers un autre lien.
+- Réordonner par glisser-déposer avec alternative clavier ; refuser les cycles de parenté et signaler les liens invalides. Un lien simple vers une page parente reste valide.
+- Refuser la suppression d’une page ou d’un nœud qui contient des sous-pages, jusqu’à leur déplacement ou leur retrait.
 
 **Hors périmètre :** racines et filtres de contexte, gérés par HD-05.
 
 **Critères de fin**
 
-- [ ] L’administrateur peut créer, lier et réordonner les éléments avec souris et clavier.
-- [ ] Un lien retrouve la page cible sans créer de seconde copie ; les liens invalides et boucles sont testés.
+- [x] L’administrateur peut créer, lier et réordonner les éléments avec souris et clavier.
+- [x] Un lien retrouve la page cible sans créer de seconde copie ; les liens invalides et boucles sont testés.
 
 ### HD-05 — Gérer les contextes et les racines de navigation
 
@@ -133,6 +135,7 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 **Périmètre**
 
 - Gérer les contextes, leur identifiant, leur nom et leur racine depuis l’administration.
+- Ne précréer aucun contexte ; autoriser une racine absente jusqu’à sa configuration. Ne pas rétro-remplir les contenus existants.
 - Appliquer la liste de contextes d’une page : liste vide disponible partout ; page indisponible redirigée vers la racine du contexte.
 - Permettre l’accès direct à une page disponible hors racine et appliquer à un lien les règles de sa cible.
 - Retourner 404 lorsque le contexte est absent ou inconnu.
@@ -141,9 +144,9 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] Les contextes invités, ménage et habitant peuvent partager l’arborescence avec des racines distinctes.
-- [ ] Les cas liste vide, accès direct hors racine, lien et redirection sont testés.
-- [ ] Une page protégée n’est jamais exposée en attendant HD-15 : la disponibilité par contexte ne suffit pas à autoriser sa lecture.
+- [x] Les contextes invités, ménage et habitant peuvent partager l’arborescence avec des racines distinctes.
+- [x] Les cas liste vide, accès direct hors racine, lien et redirection sont testés.
+- [x] Une page protégée n’est jamais exposée en attendant HD-15 : la disponibilité par contexte ne suffit pas à autoriser sa lecture.
 
 ### HD-06 — Identifier le profil de device dans l’invocation
 
@@ -160,8 +163,8 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] Une invocation valide utilise le contexte et le profil demandés ; le device facultatif ne modifie pas les droits.
-- [ ] Les profils absents ou inconnus sont refusés ; liens et redirections conservent les paramètres nécessaires.
+- [x] Une invocation valide utilise le contexte et le profil demandés ; le device facultatif ne modifie pas les droits.
+- [x] Les profils absents ou inconnus sont refusés ; liens et redirections conservent les paramètres nécessaires.
 
 ### HD-26 — Organiser les pages de paramètres de l’administration
 
@@ -216,9 +219,9 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] Une page protégée est refusée côté serveur sans autorisation et accessible avec le PIN correct dans le contexte permis.
-- [ ] Le délai d’inactivité, le changement de contexte, le retour à la racine et le refus d’un contexte indisponible sont testés.
-- [ ] Le PIN ne figure pas en clair dans le stockage, les réponses ou les journaux.
+- [x] Une page protégée est refusée côté serveur sans autorisation et accessible avec le PIN correct dans le contexte permis.
+- [x] Le délai d’inactivité, le changement de contexte, le retour à la racine et le refus d’un contexte indisponible sont testés.
+- [x] Le PIN ne figure pas en clair dans le stockage, les réponses ou les journaux.
 
 ### HD-07 — Créer le front de consultation et les contenus de démonstration
 
@@ -235,9 +238,9 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] Les parcours de démonstration sont consultables depuis les contextes prévus, sans données prétendument réelles.
-- [ ] Les pages indisponibles ou protégées respectent les règles serveur de HD-05 et HD-15.
-- [ ] Les liens directs et QR codes conservent un contexte et un profil valides.
+- [x] Les parcours de démonstration sont consultables depuis les contextes prévus, sans données prétendument réelles.
+- [x] Les pages indisponibles ou protégées respectent les règles serveur de HD-05 et HD-15.
+- [x] Les liens directs et QR codes conservent un contexte et un profil valides.
 
 ---
 

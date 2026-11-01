@@ -137,6 +137,65 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                     b.ToTable("ContentPageRedirects", (string)null);
                 });
 
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.PageTreeNodeEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsLink")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ParentNodeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PageId")
+                        .IsUnique()
+                        .HasFilter("\"IsLink\" = 0");
+
+                    b.HasIndex("PageId", "IsLink");
+
+                    b.HasIndex("ParentNodeId", "Position");
+
+                    b.ToTable("PageTreeNodes", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_PageTreeNodes_Position", "\"Position\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.UsageContextEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("RootNodeId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RootNodeId");
+
+                    b.ToTable("UsageContexts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_UsageContexts_Id", "length(\"Id\") BETWEEN 1 AND 64 AND \"Id\" NOT GLOB '*[^a-z0-9-]*' AND \"Id\" NOT LIKE '-%' AND \"Id\" NOT LIKE '%-' AND \"Id\" NOT LIKE '%--%'");
+
+                            t.HasCheckConstraint("CK_UsageContexts_Name", "length(\"Name\") BETWEEN 1 AND 128");
+                        });
+                });
+
             modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.ContentPageRedirectEntity", b =>
                 {
                     b.HasOne("Manoir.HomeDocs.Persistence.Sqlite.ContentPageEntity", "Page")
@@ -146,6 +205,39 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                         .IsRequired();
 
                     b.Navigation("Page");
+                });
+
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.PageTreeNodeEntity", b =>
+                {
+                    b.HasOne("Manoir.HomeDocs.Persistence.Sqlite.ContentPageEntity", "Page")
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Manoir.HomeDocs.Persistence.Sqlite.PageTreeNodeEntity", "ParentNode")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentNodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Page");
+
+                    b.Navigation("ParentNode");
+                });
+
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.PageTreeNodeEntity", b =>
+                {
+                    b.Navigation("Children");
+                });
+
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.UsageContextEntity", b =>
+                {
+                    b.HasOne("Manoir.HomeDocs.Persistence.Sqlite.PageTreeNodeEntity", "RootNode")
+                        .WithMany()
+                        .HasForeignKey("RootNodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("RootNode");
                 });
 #pragma warning restore 612, 618
         }

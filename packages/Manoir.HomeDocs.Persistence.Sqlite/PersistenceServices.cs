@@ -20,9 +20,14 @@ public static class PersistenceServices
         services.AddScoped<IAdministratorOperations, AdministratorOperations>();
         services.AddScoped(provider => new ContentFileStore(databasePath(provider), provider.GetRequiredService<ILogger<ContentFileStore>>()));
         services.AddScoped<IContentPageOperations, ContentPageOperations>();
+        services.AddScoped<IPageTreeOperations, PageTreeOperations>();
+        services.AddScoped<PageTreeLogic>();
+        services.AddScoped<IUsageContextOperations, UsageContextOperations>();
+        services.AddScoped<UsageContextLogic>();
         services.AddScoped<ContentPageLogic>();
         services.AddScoped<SetupLogic>();
         services.AddScoped<AdministratorLogic>();
+        services.AddScoped<DemoDataLogic>();
         return services;
     }
 

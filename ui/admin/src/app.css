@@ -86,6 +86,20 @@ body {
   padding: 2rem;
 }
 
+.demo-install {
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--mn-color-line);
+}
+
+.demo-install h2,
+.demo-install p {
+  margin: 0;
+}
+
 .settings-layout {
   display: grid;
   grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
@@ -342,6 +356,183 @@ body {
   gap: 0.75rem;
 }
 
+.page-tree-content {
+  max-width: 76rem;
+  margin: 2rem auto;
+  padding: 0 2rem 3rem;
+}
+
+.page-tree-card,
+.page-tree-form {
+  padding: 1.5rem;
+}
+
+.page-tree-list {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  list-style: none;
+}
+
+.page-tree-list[role='tree'] {
+  padding-inline-start: 0;
+}
+
+.page-tree-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-width: 0;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--mn-color-line);
+}
+
+.page-tree-row:focus-within {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.page-tree-target {
+  display: grid;
+  min-height: 2.75rem;
+  align-content: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.page-tree-target small {
+  color: var(--mn-color-ink-muted);
+}
+
+.page-tree-target:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.page-tree-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.page-tree-forms {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.page-tree-form {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.page-tree-form h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.contexts-content {
+  max-width: 76rem;
+  margin: 2rem auto;
+  padding: 0 2rem 3rem;
+}
+
+.contexts-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(20rem, 1fr);
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.contexts-list,
+.contexts-form-card {
+  padding: 1.5rem;
+}
+
+.contexts-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.contexts-list-header h2,
+.contexts-form-card h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.contexts-list ul {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contexts-list li button {
+  display: grid;
+  width: 100%;
+  min-height: 3.5rem;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--mn-color-line);
+  border-radius: 0.25rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.contexts-list li button[aria-current='true'] {
+  background: var(--mn-color-paper-strong);
+}
+
+.contexts-list li button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.contexts-list small {
+  color: var(--mn-color-ink-muted);
+}
+
+.contexts-form-card {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.contexts-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.content-contexts {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.content-contexts legend {
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
 @media (max-width: 48rem) {
   .admin-home-header {
     padding: 1rem;
@@ -386,6 +577,39 @@ body {
   }
 
   .content-list-link {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .page-tree-content {
+    margin: 1rem auto;
+    padding: 0 1rem 2rem;
+  }
+
+  .page-tree-card,
+  .page-tree-form {
+    padding: 1rem;
+  }
+
+  .page-tree-forms {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .contexts-content {
+    margin: 1rem auto;
+    padding: 0 1rem 2rem;
+  }
+
+  .contexts-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .contexts-list,
+  .contexts-form-card {
+    padding: 1rem;
+  }
+
+  .page-tree-row {
     align-items: flex-start;
     flex-direction: column;
   }
