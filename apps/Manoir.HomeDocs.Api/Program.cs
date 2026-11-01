@@ -62,6 +62,10 @@ builder.Services.AddRateLimiter(options =>
         RateLimitPartition.GetFixedWindowLimiter(
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("admin-sensitive", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
 });
 builder.Services.AddHomeDocsSqlite(provider =>
     Path.Combine(GetDataPath(provider.GetRequiredService<IConfiguration>(), provider.GetRequiredService<IWebHostEnvironment>()), "database", "homedocs.db"));
@@ -113,6 +117,8 @@ if (Directory.Exists(publicRoot))
 app.MapHealthChecks("/health");
 app.MapOpenApi();
 app.MapAdministratorEndpoints();
+app.MapAdministratorSettingsEndpoints();
+app.MapContentPageEndpoints();
 app.MapGet("/admin/login", (HttpContext context) => SendIndex(context, adminRoot));
 app.MapGet("/admin/setup", (HttpContext context) => SendIndex(context, adminRoot));
 app.MapGet("/admin", async (HttpContext context) =>

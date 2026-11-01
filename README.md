@@ -103,6 +103,107 @@ les migrations SQLite sont appliquées automatiquement au démarrage. Conserver
 la base et les clés Data Protection dans les sauvegardes et en limiter l'accès :
 les clés enregistrées sur disque ne sont pas chiffrées par l'application.
 
+## Pages Markdown
+
+L'API d'administration `/api/admin/pages` permet de lister, créer, lire,
+modifier, dupliquer, publier, remettre en brouillon et supprimer les pages.
+Toutes ces opérations exigent une session administrateur ; les écritures exigent
+aussi le jeton antiforgery décrit par `/api/admin/auth/antiforgery`. Aucun
+endpoint public ne donne accès au contenu à ce stade. L'éditeur et l'affichage
+public seront ajoutés ultérieurement.
+
+Une page possède un titre, un slug, une catégorie, une liste de contextes
+(vide pour tous), un indicateur de protection et son Markdown. Les catégories
+acceptées sont `page`, `piece`, `emplacement`, `procedure`, `equipement`,
+`depannage` et `technique`. Les slugs et identifiants de contexte sont composés
+de lettres minuscules ASCII, de chiffres et de tirets séparateurs. Le Markdown
+est limité à 1 Mio en UTF-8. Les fichiers Markdown lisibles sont conservés dans
+`content`, et leurs métadonnées et redirections dans SQLite.
+
+L'API accepte les opérations suivantes :
+
+| Méthode et chemin | Utilisation |
+| --- | --- |
+| `GET /api/admin/pages/` | Lister les pages, brouillons compris |
+| `GET /api/admin/pages/{id}` | Lire une page et sa révision |
+| `POST /api/admin/pages/` | Créer un brouillon |
+| `PUT /api/admin/pages/{id}` | Enregistrer les métadonnées et le Markdown |
+| `POST /api/admin/pages/{id}/publication` | Publier ou remettre en brouillon |
+| `POST /api/admin/pages/{id}/duplicate` | Dupliquer en fournissant un titre et un slug |
+| `DELETE /api/admin/pages/{id}?revision={revision}` | Supprimer une page |
+
+Par exemple, une création reçoit un objet JSON de cette forme :
+
+```json
+{
+  "title": "Cuisine",
+  "slug": "cuisine",
+  "category": "piece",
+  "contexts": ["invites"],
+  "requiresAuthentication": false,
+  "markdown": "# Cuisine\n"
+}
+```
+
+La modification reçoit `{ "revision": 1, "page": { ... } }`, avec le même
+objet de page que pour la création. La publication reçoit
+`{ "revision": 1, "isPublished": true }` et la duplication
+`{ "title": "Copie", "slug": "copie" }`.
+
+La création et la duplication produisent des brouillons. Une modification d'une
+page déjà publiée prend effet dès son enregistrement. Chaque page contient une
+révision : la modification, la publication et la suppression doivent fournir la
+révision lue ; une révision périmée renvoie 409. Un slug publié modifié conserve
+une redirection, mais la réutilisation de son ancien slug a priorité sur celle-ci.
+L'historique et la restauration des versions relèvent d'une étape ultérieure.
+
+Pour une sauvegarde cohérente, arrêter l'application avant de copier ensemble
+les répertoires `database` et `content`, ainsi que les autres données
+persistantes nécessaires. La copie de la seule base ne sauvegarde pas les pages.
+Après une interruption ou un échec d'écriture, des fichiers non référencés
+peuvent être déplacés dans `content/quarantine` avec un avertissement dans les
+journaux. Ils ne sont pas publiés et peuvent contenir des données sensibles :
+examiner ce répertoire avant de supprimer manuellement les fichiers inutiles.
+Une référence SQLite vers un fichier manquant ou une entrée inattendue dans
+`content` provoque une erreur explicite et nécessite une intervention.
+
+## Paramètres de l’administration
+
+Depuis `/admin/`, ouvrir les paramètres pour accéder aux préférences UI, à la
+sécurité et aux pages d’intégration. Ces pages et leurs API sont réservées à la
+session administrateur. Les préférences (actuellement la langue `fr` ou `en`)
+sont enregistrées avec le compte ; elles prennent priorité sur la langue du
+navigateur. La migration ajoute ces champs sans réinitialiser le compte existant.
+
+La page Sécurité permet de modifier le nom du compte, le mot de passe et le PIN
+commun. Chaque changement demande le mot de passe actuel. Le nouveau mot de passe
+doit contenir de 12 à 1 024 caractères ; laisser ses deux champs vides conserve
+le mot de passe existant. Le PIN est exactement composé de six chiffres ; il
+peut être supprimé depuis la même page. Le PIN est stocké sous forme de hash
+ASP.NET Core Identity et seul son état configuré ou non est renvoyé à l’interface.
+Les modifications sensibles sont limitées à dix requêtes par minute et par
+adresse IP. La vérification et l’usage du PIN pour protéger les pages ne sont
+pas encore disponibles ; ils relèvent de HD-15.
+
+La page Home Assistant est un emplacement réservé : aucun jeton ni paramètre de
+connexion n’y est stocké et aucun test de connexion n’est disponible. La
+configuration effective et les autres intégrations seront ajoutées dans des
+étapes ultérieures.
+
+## Créer et publier une page
+
+Après connexion, ouvrir **Gérer les contenus** puis **Créer une page**. Saisir un
+titre, un slug stable en minuscules ASCII (`a-z`, `0-9` et tirets), une catégorie
+et éventuellement une liste de contextes séparés par des virgules. Le contenu
+s’édite dans CodeMirror avec coloration Markdown et aperçu. L’aperçu ignore le
+HTML brut et ne l’exécute pas.
+
+L’enregistrement crée un brouillon ; une page déjà publiée est modifiée dès
+l’enregistrement. Publier ou repasser en brouillon se fait séparément. Les
+conflits de modification sont signalés et demandent de recharger la page. La
+case de protection enregistre les métadonnées, mais le contrôle par PIN et la
+consultation publique ne sont pas encore disponibles (HD-15 et HD-07).
+
 ## Docker Compose
 
 Avec `NODE_AUTH_TOKEN` configuré dans le terminal :

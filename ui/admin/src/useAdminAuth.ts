@@ -14,6 +14,13 @@ interface AuthState {
 }
 
 function navigate(phase: Phase) {
+  if (
+    phase === 'authenticated' &&
+    (window.location.pathname.startsWith('/admin/settings/') ||
+      window.location.pathname.startsWith('/admin/pages'))
+  ) {
+    return;
+  }
   const path =
     phase === 'setup'
       ? '/admin/setup'

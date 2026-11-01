@@ -14,7 +14,8 @@ public sealed class SqlitePersistenceTests : IDisposable
     {
         await using var context = CreateContext();
         await context.Database.MigrateAsync();
-        Assert.Single(await context.Database.GetAppliedMigrationsAsync());
+        Assert.Contains(await context.Database.GetAppliedMigrationsAsync(),
+            migration => migration.EndsWith("_InitialCreate", StringComparison.Ordinal));
 
         var operations = new AdministratorOperations(context);
         Assert.False(await operations.IsInitializedAsync());
@@ -24,6 +25,22 @@ public sealed class SqlitePersistenceTests : IDisposable
         Assert.True(await operations.IsInitializedAsync());
         Assert.Equal(credentials, await operations.FindByNormalizedUserNameAsync("ADMIN"));
         Assert.Null(await operations.FindByNormalizedUserNameAsync("OTHER"));
+    }
+
+    [Fact]
+    public async Task AdministratorSettingsPersistLanguageAndPinHashWithoutPlaintextPin()
+    {
+        await using var context = CreateContext();
+        await context.Database.MigrateAsync();
+        var operations = new AdministratorOperations(context);
+        Assert.True(await operations.TryCreateInitialAsync(new("admin", "ADMIN", "password-hash")));
+        Assert.True(await operations.UpdateLanguageAsync("ADMIN", "en"));
+        Assert.True(await operations.UpdatePinHashAsync("ADMIN", "pin-password-hash"));
+
+        var stored = await operations.FindByNormalizedUserNameAsync("ADMIN");
+        Assert.NotNull(stored);
+        Assert.Equal("en", stored.Language);
+        Assert.Equal("pin-password-hash", stored.PinHash);
     }
 
     [Fact]

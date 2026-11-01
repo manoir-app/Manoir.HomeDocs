@@ -36,5 +36,14 @@ public sealed class SetupLogicTests
 
         public Task<AdministratorCredentials?> FindByNormalizedUserNameAsync(string normalizedUserName, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+
+        public Task<bool> UpdateCredentialsAsync(string currentNormalizedUserName, string userName, string normalizedUserName, string passwordHash, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<bool> UpdatePinHashAsync(string normalizedUserName, string? pinHash, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<bool> UpdateLanguageAsync(string normalizedUserName, string language, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

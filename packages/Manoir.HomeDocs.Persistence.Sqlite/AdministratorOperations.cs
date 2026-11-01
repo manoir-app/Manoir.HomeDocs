@@ -19,6 +19,72 @@ public sealed class AdministratorOperations(HomeDocsDbContext context) : IAdmini
     public async Task<AdministratorCredentials?> FindByNormalizedUserNameAsync(string normalizedUserName, CancellationToken cancellationToken = default) =>
         await context.Administrators.AsNoTracking()
             .Where(administrator => administrator.NormalizedUserName == normalizedUserName)
-            .Select(administrator => new AdministratorCredentials(administrator.UserName, administrator.NormalizedUserName, administrator.PasswordHash))
+            .Select(administrator => new AdministratorCredentials(
+                administrator.UserName, administrator.NormalizedUserName, administrator.PasswordHash,
+                administrator.PinHash, administrator.Language))
             .SingleOrDefaultAsync(cancellationToken);
+
+    public async Task<bool> UpdateCredentialsAsync(
+        string currentNormalizedUserName,
+        string userName,
+        string normalizedUserName,
+        string passwordHash,
+        CancellationToken cancellationToken = default)
+    {
+        var administrator = await context.Administrators.SingleOrDefaultAsync(
+            item => item.Id == 1 && item.NormalizedUserName == currentNormalizedUserName, cancellationToken);
+        if (administrator is null) return false;
+        administrator.UserName = userName;
+        administrator.NormalizedUserName = normalizedUserName;
+        administrator.PasswordHash = passwordHash;
+        administrator.Revision++;
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            context.ChangeTracker.Clear();
+            return false;
+        }
+    }
+
+    public async Task<bool> UpdatePinHashAsync(string normalizedUserName, string? pinHash, CancellationToken cancellationToken = default)
+    {
+        var administrator = await context.Administrators.SingleOrDefaultAsync(
+            item => item.Id == 1 && item.NormalizedUserName == normalizedUserName, cancellationToken);
+        if (administrator is null) return false;
+        administrator.PinHash = pinHash;
+        administrator.Revision++;
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            context.ChangeTracker.Clear();
+            return false;
+        }
+    }
+
+    public async Task<bool> UpdateLanguageAsync(string normalizedUserName, string language, CancellationToken cancellationToken = default)
+    {
+        var administrator = await context.Administrators.SingleOrDefaultAsync(
+            item => item.Id == 1 && item.NormalizedUserName == normalizedUserName, cancellationToken);
+        if (administrator is null) return false;
+        administrator.Language = language;
+        administrator.Revision++;
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            context.ChangeTracker.Clear();
+            return false;
+        }
+    }
 }

@@ -6,4 +6,7 @@ internal sealed class AdministratorEntity
     public required string UserName { get; set; }
     public required string NormalizedUserName { get; set; }
     public required string PasswordHash { get; set; }
+    public string? PinHash { get; set; }
+    public string Language { get; set; } = "fr";
+    public long Revision { get; set; } = 1;
 }

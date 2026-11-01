@@ -10,20 +10,59 @@ import {
 import '@manoir-app/core-admin-ui-kit/styles.css';
 import { browserLanguage, translate } from './translations';
 import type { Language } from './translations';
+import { AdminSettings } from './AdminSettings';
+import { adminRouteFromPath, adminRoutePath } from './adminRoutes';
+import type { AdminRoute } from './adminRoutes';
+import { AdminContent } from './AdminContent';
+import { useAdminSettings } from './useAdminSettings';
 import { useAdminAuth } from './useAdminAuth';
 import './app.css';
 
 export function App() {
-  const [language, setLanguage] = useState<Language>(browserLanguage);
+  const [languageOverride, setLanguageOverride] =
+    useState<Language>(browserLanguage);
   const [userName, setUserName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const { state, refresh, submit, signOut } = useAdminAuth();
+  const adminSettings = useAdminSettings(state.phase === 'authenticated');
+  const [adminRoute, setAdminRoute] = useState<AdminRoute>(() =>
+    adminRouteFromPath(window.location.pathname),
+  );
+  const language = adminSettings.state.settings?.language ?? languageOverride;
   const t = (key: Parameters<typeof translate>[1]) => translate(language, key);
 
   useEffect(() => {
     document.documentElement.lang = language;
   }, [language]);
+
+  useEffect(() => {
+    const updatePage = () =>
+      setAdminRoute(adminRouteFromPath(window.location.pathname));
+    window.addEventListener('popstate', updatePage);
+    return () => window.removeEventListener('popstate', updatePage);
+  }, []);
+
+  useEffect(() => {
+    if (adminSettings.state.error === 'sessionExpired') {
+      queueMicrotask(() => void refresh());
+    }
+  }, [adminSettings.state.error, refresh]);
+
+  const navigateAdmin = (route: AdminRoute) => {
+    const path = adminRoutePath(route);
+    window.history.pushState(null, '', path);
+    setAdminRoute(route);
+  };
+
+  const changeLanguage = async (value: Language) => {
+    if (state.phase === 'authenticated') {
+      if (adminSettings.state.settings)
+        await adminSettings.changeLanguage(value);
+    } else {
+      setLanguageOverride(value);
+    }
+  };
 
   const languagePicker = (
     <div className="language-picker" role="group" aria-label={t('language')}>
@@ -33,7 +72,11 @@ export function App() {
           type="button"
           lang={value}
           aria-pressed={language === value}
-          onClick={() => setLanguage(value)}
+          disabled={
+            state.phase === 'authenticated' &&
+            (!adminSettings.state.settings || adminSettings.state.busy)
+          }
+          onClick={() => void changeLanguage(value)}
         >
           {value.toUpperCase()}
         </button>
@@ -59,6 +102,53 @@ export function App() {
   }
 
   if (state.phase === 'authenticated') {
+    if (adminRoute?.type === 'settings' && adminSettings.state.settings) {
+      return (
+        <AdminSettings
+          page={adminRoute.page}
+          settings={adminSettings.state.settings}
+          language={language}
+          busy={adminSettings.state.busy}
+          error={adminSettings.state.error}
+          notice={adminSettings.state.notice}
+          translate={t}
+          onNavigate={(page) => navigateAdmin({ type: 'settings', page })}
+          onBack={() => navigateAdmin(null)}
+          onLanguageChange={adminSettings.changeLanguage}
+          onAccountChange={adminSettings.changeAccount}
+          onPinChange={adminSettings.changePin}
+        />
+      );
+    }
+    if (
+      adminRoute?.type === 'content-list' ||
+      adminRoute?.type === 'content-new' ||
+      adminRoute?.type === 'content-edit'
+    ) {
+      return (
+        <AdminContent
+          key={
+            adminRoute.type === 'content-edit' ? adminRoute.id : adminRoute.type
+          }
+          route={adminRoute}
+          translate={t}
+          onNavigate={navigateAdmin}
+          onSessionExpired={() => refresh()}
+        />
+      );
+    }
+    if (adminRoute?.type === 'settings' && !adminSettings.state.settings) {
+      return (
+        <main className="mn-kit-theme admin-status" role="status">
+          {adminSettings.state.error ? t('unavailable') : t('loading')}
+          {adminSettings.state.error && (
+            <Button onClick={() => void adminSettings.reload()}>
+              {t('retry')}
+            </Button>
+          )}
+        </main>
+      );
+    }
     return (
       <main className="mn-kit-theme admin-home">
         <header className="admin-home-header">
@@ -67,11 +157,26 @@ export function App() {
         </header>
         <Card className="admin-home-content">
           <p>
-            {t('signedIn')} : {state.userName}
+            {t('signedIn')} :{' '}
+            {adminSettings.state.settings?.userName ?? state.userName}
           </p>
           <h1>{t('admin')}</h1>
           <p>{t('ready')}</p>
           {state.notice && <p role="alert">{t(state.notice)}</p>}
+          <Button
+            variant="secondary"
+            onClick={() =>
+              navigateAdmin({ type: 'settings', page: 'preferences' })
+            }
+          >
+            {t('openSettings')}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => navigateAdmin({ type: 'content-list' })}
+          >
+            {t('openContent')}
+          </Button>
           <Button
             variant="secondary"
             disabled={state.busy}

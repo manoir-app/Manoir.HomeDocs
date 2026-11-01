@@ -103,9 +103,9 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] Un administrateur peut gérer et publier une page via les opérations et API ; les accès non administratifs en écriture sont refusés.
-- [ ] Le Markdown stocké est lisible ; les doublons et les redirections de slug sont testés.
-- [ ] Aucun endpoint public ne divulgue une page protégée avant la mise en place de ses contrôles d’accès.
+- [x] Un administrateur peut gérer et publier une page via les opérations et API ; les accès non administratifs en écriture sont refusés.
+- [x] Le Markdown stocké est lisible ; les doublons et les redirections de slug sont testés.
+- [x] Aucun endpoint public ne divulgue une page protégée avant la mise en place de ses contrôles d’accès.
 
 ### HD-04 — Administrer l’arborescence et les liens entre pages
 
@@ -171,15 +171,16 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 **Périmètre**
 
 - Créer les pages de paramètres Préférences UI, Sécurité et Intégration Home Assistant.
-- Permettre la gestion du compte administrateur, de son mot de passe et du PIN commun dans Sécurité.
+- Permettre la gestion du compte administrateur, de son mot de passe et du PIN commun dans Sécurité ; confirmer le mot de passe actuel avant chaque changement et exiger un PIN à six chiffres.
+- Enregistrer les préférences UI avec le compte ; ne jamais renvoyer les hashes ou les secrets au navigateur.
 - Prévoir l’ajout de pages d’autres intégrations ; les paramètres effectifs de Home Assistant seront branchés par HD-16.
 
 **Hors périmètre :** connecteur Manoir et authentification transmise par JWT.
 
 **Critères de fin**
 
-- [ ] Les pages et opérations sont réservées à l’admin ; la modification du compte, du mot de passe et du PIN est testée.
-- [ ] Les secrets ne sont pas affichés en clair, renvoyés après enregistrement ni journalisés.
+- [x] Les pages et opérations sont réservées à l’admin ; la modification du compte, du mot de passe et du PIN est testée.
+- [x] Les secrets ne sont pas affichés en clair, renvoyés après enregistrement ni journalisés.
 
 ### HD-25 — Traduire l’interface d’administration en français et anglais
 
@@ -196,9 +197,9 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] Les interfaces administratives existantes sont disponibles en français et anglais.
-- [ ] La langue du navigateur, le repli et la préférence enregistrée sont testés.
-- [ ] Aucune page ou ressource éditoriale n’est dupliquée pour gérer la langue.
+- [x] Les interfaces administratives existantes sont disponibles en français et anglais.
+- [x] La langue du navigateur, le repli et la préférence enregistrée sont testés.
+- [x] Aucune page ou ressource éditoriale n’est dupliquée pour gérer la langue.
 
 ### HD-15 — Protéger les pages et actions par PIN
 
@@ -256,8 +257,8 @@ L’ordre des lots facilite la lecture, mais seuls les prérequis de chaque fich
 
 **Critères de fin**
 
-- [ ] L’admin peut créer, éditer, prévisualiser et publier une page ; les erreurs de validation sont visibles.
-- [ ] Les tests couvrent le parcours d’édition et les accès non authentifiés sont refusés.
+- [x] L’admin peut créer, éditer, prévisualiser et publier une page ; les erreurs de validation sont visibles.
+- [x] Les tests couvrent le parcours d’édition et les accès non authentifiés sont refusés.
 
 ### HD-09 — Gérer les médias et leur insertion intelligente
 
