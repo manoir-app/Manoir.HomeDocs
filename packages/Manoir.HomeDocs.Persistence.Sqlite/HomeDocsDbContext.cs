@@ -10,6 +10,7 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
     internal DbSet<PageTreeNodeEntity> PageTreeNodes => Set<PageTreeNodeEntity>();
     internal DbSet<UsageContextEntity> UsageContexts => Set<UsageContextEntity>();
     internal DbSet<MediaItemEntity> MediaItems => Set<MediaItemEntity>();
+    internal DbSet<ContentPageVersionEntity> ContentPageVersions => Set<ContentPageVersionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +71,24 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
             entity.HasIndex(node => new { node.ParentNodeId, node.Position });
             entity.HasIndex(node => new { node.PageId, node.IsLink });
             entity.HasIndex(node => node.PageId).IsUnique().HasFilter("\"IsLink\" = 0");
+        });
+
+        modelBuilder.Entity<ContentPageVersionEntity>(entity =>
+        {
+            entity.ToTable("ContentPageVersions", table =>
+            {
+                table.HasCheckConstraint("CK_ContentPageVersions_Revision", "\"Revision\" > 0");
+                table.HasCheckConstraint("CK_ContentPageVersions_Event", "\"Event\" IN ('created','edited','published','unpublished','restored','baseline')");
+            });
+            entity.HasKey(version => version.Id);
+            entity.Property(version => version.Event).IsRequired();
+            entity.Property(version => version.Title).HasMaxLength(200).IsRequired();
+            entity.Property(version => version.Slug).HasMaxLength(80).IsRequired();
+            entity.Property(version => version.Category).IsRequired();
+            entity.Property(version => version.ContextsJson).IsRequired();
+            entity.Property(version => version.Markdown).IsRequired();
+            entity.HasOne(version => version.Page).WithMany().HasForeignKey(version => version.PageId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(version => new { version.PageId, version.Revision }).IsUnique();
         });
 
         modelBuilder.Entity<MediaItemEntity>(entity =>

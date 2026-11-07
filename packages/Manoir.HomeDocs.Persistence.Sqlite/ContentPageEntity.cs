@@ -45,3 +45,21 @@ internal sealed class MediaItemEntity
     public long CreatedAtUnixMilliseconds { get; set; }
     public long Revision { get; set; }
 }
+
+internal sealed class ContentPageVersionEntity
+{
+    public long Id { get; set; }
+    public Guid PageId { get; set; }
+    public ContentPageEntity Page { get; set; } = null!;
+    public long Revision { get; set; }
+    public string Event { get; set; } = null!;
+    public string Title { get; set; } = null!;
+    public string Slug { get; set; } = null!;
+    public string Category { get; set; } = null!;
+    public string ContextsJson { get; set; } = null!;
+    public bool RequiresAuthentication { get; set; }
+    public bool IsPublished { get; set; }
+    public string Markdown { get; set; } = null!;
+    public long SavedAtUnixMilliseconds { get; set; }
+    public long? RestoredFromRevision { get; set; }
+}

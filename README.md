@@ -14,7 +14,9 @@ le corps d’une page protégée avant saisie du PIN. La bibliothèque de média
 (images PNG, JPEG, GIF, WebP et PDF, 20 Mo maximum) se gère dans l’administration :
 recherche, classement par dossier, titre et texte alternatif, insertion dans
 l’éditeur sans saisir de chemin, liste des pages utilisatrices et suppression
-protégée ; les contenus fictifs ne sont installés qu’après
+protégée. Chaque page garde son historique (création, modifications, publications)
+et une version antérieure peut être restaurée sans changer l’adresse de la page ;
+les liens sortants, entrants et cassés sont signalés dans l’éditeur ; les contenus fictifs ne sont installés qu’après
 une action explicite dans l’administration. Les connecteurs restent à venir.
 Le back-office utilise le kit de composants MaNoir ; le site public possède ses
 propres composants.

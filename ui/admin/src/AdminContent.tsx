@@ -7,6 +7,7 @@ import { EditorView } from '@codemirror/view';
 import { Button, Card, Field, TextField } from '@manoir-app/core-admin-ui-kit';
 import ReactMarkdown from 'react-markdown';
 import { MediaPicker } from './AdminMedia';
+import { PageHistoryPanel, PageLinksPanel } from './AdminPageHistory';
 import * as api from './adminContentApi';
 import type { ContentPage, ContentPageInput } from './adminContentApi';
 import * as contextApi from './adminContextApi';
@@ -651,6 +652,24 @@ function PageEditor({
           )}
         </div>
       </form>
+      {page && (
+        <>
+          <PageLinksPanel
+            t={t}
+            pageId={page.id}
+            revision={page.revision}
+            onNavigatePage={(id) => onNavigate({ type: 'content-edit', id })}
+            onSessionExpired={onSessionExpired}
+          />
+          <PageHistoryPanel
+            t={t}
+            pageId={page.id}
+            revision={page.revision}
+            onRestored={() => void reload()}
+            onSessionExpired={onSessionExpired}
+          />
+        </>
+      )}
     </section>
   );
 }

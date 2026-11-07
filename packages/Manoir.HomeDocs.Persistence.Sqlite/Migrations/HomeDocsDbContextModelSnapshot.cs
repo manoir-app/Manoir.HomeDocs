@@ -134,6 +134,69 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                     b.ToTable("ContentPageRedirects", (string)null);
                 });
 
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.ContentPageVersionEntity", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContextsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Markdown")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("PageId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("RequiresAuthentication")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long?>("RestoredFromRevision")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("SavedAtUnixMilliseconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PageId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("ContentPageVersions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ContentPageVersions_Event", "\"Event\" IN ('created','edited','published','unpublished','restored','baseline')");
+
+                            t.HasCheckConstraint("CK_ContentPageVersions_Revision", "\"Revision\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.MediaItemEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -251,6 +314,17 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                 });
 
             modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.ContentPageRedirectEntity", b =>
+                {
+                    b.HasOne("Manoir.HomeDocs.Persistence.Sqlite.ContentPageEntity", "Page")
+                        .WithMany()
+                        .HasForeignKey("PageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Page");
+                });
+
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.ContentPageVersionEntity", b =>
                 {
                     b.HasOne("Manoir.HomeDocs.Persistence.Sqlite.ContentPageEntity", "Page")
                         .WithMany()

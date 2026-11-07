@@ -139,6 +139,7 @@ app.MapOpenApi();
 app.MapAdministratorEndpoints();
 app.MapAdministratorSettingsEndpoints();
 app.MapContentPageEndpoints();
+app.MapContentHistoryEndpoints();
 app.MapPageTreeEndpoints();
 app.MapUsageContextEndpoints();
 app.MapMediaEndpoints();
