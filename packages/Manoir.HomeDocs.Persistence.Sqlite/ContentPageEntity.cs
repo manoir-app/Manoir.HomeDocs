@@ -31,3 +31,17 @@ internal sealed class PageTreeNodeEntity
     public bool IsLink { get; set; }
     public int Position { get; set; }
 }
+
+internal sealed class MediaItemEntity
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = null!;
+    public string Kind { get; set; } = null!;
+    public string ContentType { get; set; } = null!;
+    public long Size { get; set; }
+    public string Title { get; set; } = null!;
+    public string AltText { get; set; } = null!;
+    public string Folder { get; set; } = null!;
+    public long CreatedAtUnixMilliseconds { get; set; }
+    public long Revision { get; set; }
+}

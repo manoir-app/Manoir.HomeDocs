@@ -398,4 +398,32 @@ describe('lecteur public', () => {
     expect(input).toHaveValue('');
     expect(screen.queryByText(/temporairement indisponible\./)).toBeNull();
   });
+
+  it('affiche les images et les PDF du manuel avec le contexte, le profil et le device', async () => {
+    setUrl('/');
+    mocks.getNavigation.mockResolvedValue(navigation);
+    mocks.getPage.mockResolvedValue(
+      page(
+        'accueil',
+        '![Plan de la cuisine](/api/public/media/11111111-1111-1111-1111-111111111111)\n\n[Notice du four](/api/public/media/22222222-2222-2222-2222-222222222222)\n\n![Externe](https://exemple.test/image.png)',
+      ),
+    );
+
+    render(<App />);
+    const image = await screen.findByRole('img', {
+      name: 'Plan de la cuisine',
+    });
+    const query = '?context=habitant&profile=desktop&device=ordinateur-bureau';
+    expect(image).toHaveAttribute(
+      'src',
+      `/api/public/media/11111111-1111-1111-1111-111111111111${query}`,
+    );
+    expect(
+      screen.getByRole('link', { name: 'Notice du four' }),
+    ).toHaveAttribute(
+      'href',
+      `/api/public/media/22222222-2222-2222-2222-222222222222${query}`,
+    );
+    expect(screen.queryByRole('img', { name: 'Externe' })).toBeNull();
+  });
 });

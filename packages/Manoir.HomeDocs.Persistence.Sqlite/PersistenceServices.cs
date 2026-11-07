@@ -22,6 +22,9 @@ public static class PersistenceServices
         services.AddScoped<IContentPageOperations, ContentPageOperations>();
         services.AddScoped<IPageTreeOperations, PageTreeOperations>();
         services.AddScoped<ISearchOperations, SearchOperations>();
+        services.AddScoped(provider => new MediaFileStore(databasePath(provider)));
+        services.AddScoped<IMediaOperations, MediaOperations>();
+        services.AddScoped<MediaLogic>();
         services.AddScoped<SearchLogic>();
         services.AddScoped<PageTreeLogic>();
         services.AddScoped<IUsageContextOperations, UsageContextOperations>();

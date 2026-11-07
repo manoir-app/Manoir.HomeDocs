@@ -134,6 +134,63 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                     b.ToTable("ContentPageRedirects", (string)null);
                 });
 
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.MediaItemEntity", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AltText")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("CreatedAtUnixMilliseconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Folder")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Folder");
+
+                    b.ToTable("MediaItems", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_MediaItems_Kind", "\"Kind\" IN ('image','pdf')");
+
+                            t.HasCheckConstraint("CK_MediaItems_Revision", "\"Revision\" > 0");
+
+                            t.HasCheckConstraint("CK_MediaItems_Size", "\"Size\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.PageTreeNodeEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -222,11 +279,6 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                     b.Navigation("ParentNode");
                 });
 
-            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.PageTreeNodeEntity", b =>
-                {
-                    b.Navigation("Children");
-                });
-
             modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.UsageContextEntity", b =>
                 {
                     b.HasOne("Manoir.HomeDocs.Persistence.Sqlite.PageTreeNodeEntity", "RootNode")
@@ -235,6 +287,11 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("RootNode");
+                });
+
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.PageTreeNodeEntity", b =>
+                {
+                    b.Navigation("Children");
                 });
 #pragma warning restore 612, 618
         }

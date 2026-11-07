@@ -9,6 +9,7 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
     internal DbSet<ContentPageRedirectEntity> ContentPageRedirects => Set<ContentPageRedirectEntity>();
     internal DbSet<PageTreeNodeEntity> PageTreeNodes => Set<PageTreeNodeEntity>();
     internal DbSet<UsageContextEntity> UsageContexts => Set<UsageContextEntity>();
+    internal DbSet<MediaItemEntity> MediaItems => Set<MediaItemEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,6 +70,26 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
             entity.HasIndex(node => new { node.ParentNodeId, node.Position });
             entity.HasIndex(node => new { node.PageId, node.IsLink });
             entity.HasIndex(node => node.PageId).IsUnique().HasFilter("\"IsLink\" = 0");
+        });
+
+        modelBuilder.Entity<MediaItemEntity>(entity =>
+        {
+            entity.ToTable("MediaItems", table =>
+            {
+                table.HasCheckConstraint("CK_MediaItems_Kind", "\"Kind\" IN ('image','pdf')");
+                table.HasCheckConstraint("CK_MediaItems_Size", "\"Size\" > 0");
+                table.HasCheckConstraint("CK_MediaItems_Revision", "\"Revision\" > 0");
+            });
+            entity.HasKey(media => media.Id);
+            entity.Property(media => media.Id).ValueGeneratedNever();
+            entity.Property(media => media.Name).HasMaxLength(128).IsRequired();
+            entity.Property(media => media.Kind).IsRequired();
+            entity.Property(media => media.ContentType).IsRequired();
+            entity.Property(media => media.Title).HasMaxLength(200).IsRequired();
+            entity.Property(media => media.AltText).HasMaxLength(300).IsRequired();
+            entity.Property(media => media.Folder).HasMaxLength(64).IsRequired();
+            entity.Property(media => media.Revision).IsConcurrencyToken();
+            entity.HasIndex(media => media.Folder);
         });
 
         modelBuilder.Entity<UsageContextEntity>(entity =>

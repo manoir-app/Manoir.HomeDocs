@@ -10,7 +10,11 @@ Le compte administrateur, la gestion Markdown, l’arborescence et les contextes
 sont disponibles. Le lecteur public applique les profils d’affichage et la
 protection des pages par PIN ; une recherche locale (SQLite FTS5) filtre les
 résultats par contexte, gère synonymes et fautes de frappe, et n’expose jamais
-le corps d’une page protégée avant saisie du PIN ; les contenus fictifs ne sont installés qu’après
+le corps d’une page protégée avant saisie du PIN. La bibliothèque de médias
+(images PNG, JPEG, GIF, WebP et PDF, 20 Mo maximum) se gère dans l’administration :
+recherche, classement par dossier, titre et texte alternatif, insertion dans
+l’éditeur sans saisir de chemin, liste des pages utilisatrices et suppression
+protégée ; les contenus fictifs ne sont installés qu’après
 une action explicite dans l’administration. Les connecteurs restent à venir.
 Le back-office utilise le kit de composants MaNoir ; le site public possède ses
 propres composants.

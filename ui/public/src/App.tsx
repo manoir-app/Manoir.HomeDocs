@@ -305,6 +305,14 @@ export function App() {
               skipHtml
               urlTransform={safeLocalUrl}
               components={{
+                img: ({ src, alt }) =>
+                  src ? (
+                    <img
+                      src={preserveInvocation(src, route.invocation)}
+                      alt={alt ?? ''}
+                      loading="lazy"
+                    />
+                  ) : null,
                 a: ({ href, children }) => {
                   if (!href) return <>{children}</>;
                   return (
