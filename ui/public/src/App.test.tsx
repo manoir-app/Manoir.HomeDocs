@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   verifyPin: vi.fn(),
   refreshProtectedAccess: vi.fn(),
   logoutProtectedAccess: vi.fn(),
+  searchPages: vi.fn(),
 }));
 
 vi.mock('./publicApi', async (importOriginal) => {
@@ -27,6 +28,7 @@ vi.mock('./publicApi', async (importOriginal) => {
     verifyPin: mocks.verifyPin,
     refreshProtectedAccess: mocks.refreshProtectedAccess,
     logoutProtectedAccess: mocks.logoutProtectedAccess,
+    searchPages: mocks.searchPages,
   };
 });
 
@@ -82,6 +84,7 @@ describe('lecteur public', () => {
     mocks.verifyPin.mockReset();
     mocks.refreshProtectedAccess.mockReset();
     mocks.logoutProtectedAccess.mockReset();
+    mocks.searchPages.mockReset();
   });
 
   afterEach(() => {
@@ -282,5 +285,117 @@ describe('lecteur public', () => {
 
     expect(screen.queryByText('Texte protégé.')).toBeNull();
     expect(screen.getByLabelText('PIN')).toBeVisible();
+  });
+
+  it('recherche au fil de la saisie, signale les pages protégées et ouvre un résultat', async () => {
+    setUrl('/');
+    mocks.getNavigation.mockResolvedValue(navigation);
+    mocks.getPage.mockImplementation(async (slug: string) => page(slug));
+    mocks.searchPages.mockResolvedValue({
+      query: 'sopalin',
+      corrected: false,
+      results: [
+        {
+          pageId: 'essuie-id',
+          title: 'Essuie-tout',
+          slug: 'essuie-tout',
+          category: 'emplacement',
+          summary: 'Résumé.',
+          excerpt: 'Sous l’évier.',
+          requiresAuthentication: false,
+          path: ['Cuisine'],
+        },
+        {
+          pageId: 'coffre-id',
+          title: 'Coffre',
+          slug: 'coffre',
+          category: 'equipement',
+          summary: 'Résumé du coffre.',
+          excerpt: null,
+          requiresAuthentication: true,
+          path: [],
+        },
+      ],
+    });
+
+    render(<App />);
+    expect(
+      await screen.findByRole('heading', { name: 'Accueil' }),
+    ).toBeVisible();
+    const input = screen.getByRole('searchbox', {
+      name: 'Rechercher dans le manuel',
+    });
+
+    fireEvent.change(input, { target: { value: 's' } });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(mocks.searchPages).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: 'sopalin' } });
+    const link = await screen.findByRole('link', { name: /Essuie-tout/ });
+    expect(mocks.searchPages).toHaveBeenCalledTimes(1);
+    expect(mocks.searchPages.mock.calls[0]?.[0]).toBe('sopalin');
+    expect(mocks.searchPages.mock.calls[0]?.[1]).toEqual(invocation);
+    expect(screen.getByText(/Emplacement · Cuisine/)).toBeVisible();
+    expect(screen.getByText('Sous l’évier.')).toBeVisible();
+    expect(screen.getByText('Résumé du coffre.')).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: /Coffre.*Protégée/ }),
+    ).toBeVisible();
+
+    fireEvent.click(link);
+    expect(
+      await screen.findByRole('heading', { name: 'Consignes' }),
+    ).toBeVisible();
+    expect(mocks.getPage).toHaveBeenLastCalledWith('essuie-tout', invocation);
+    expect(input).toHaveValue('');
+  });
+
+  it('indique les résultats approchants, l’absence de résultat et les pannes', async () => {
+    setUrl('/');
+    mocks.getNavigation.mockResolvedValue(navigation);
+    mocks.getPage.mockImplementation(async (slug: string) => page(slug));
+    mocks.searchPages.mockResolvedValueOnce({
+      query: 'rouleaus',
+      corrected: true,
+      results: [
+        {
+          pageId: 'essuie-id',
+          title: 'Essuie-tout',
+          slug: 'essuie-tout',
+          category: 'emplacement',
+          summary: '',
+          excerpt: null,
+          requiresAuthentication: false,
+          path: [],
+        },
+      ],
+    });
+    mocks.searchPages.mockResolvedValueOnce({
+      query: 'zzzz',
+      corrected: false,
+      results: [],
+    });
+    mocks.searchPages.mockRejectedValueOnce(new PublicApiError('unavailable'));
+
+    render(<App />);
+    await screen.findByRole('heading', { name: 'Accueil' });
+    const input = screen.getByRole('searchbox');
+
+    fireEvent.change(input, { target: { value: 'rouleaus' } });
+    expect(await screen.findByText(/Résultats approchants/)).toBeVisible();
+
+    fireEvent.change(input, { target: { value: 'zzzz' } });
+    expect(
+      await screen.findByText(/Aucun résultat pour « zzzz »/),
+    ).toBeVisible();
+
+    fireEvent.change(input, { target: { value: 'panne' } });
+    expect(
+      await screen.findByText('La recherche est temporairement indisponible.'),
+    ).toBeVisible();
+
+    fireEvent.keyDown(input, { key: 'Escape' });
+    expect(input).toHaveValue('');
+    expect(screen.queryByText(/temporairement indisponible\./)).toBeNull();
   });
 });

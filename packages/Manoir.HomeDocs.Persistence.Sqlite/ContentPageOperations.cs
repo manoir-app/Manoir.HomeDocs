@@ -126,6 +126,7 @@ internal sealed class ContentPageOperations(HomeDocsDbContext context, ContentFi
                 });
             }
             await context.SaveChangesAsync(cancellationToken);
+            await SearchIndex.WriteAsync(context, page with { Revision = revision }, cancellationToken);
             commitStarted = true;
             await transaction.CommitAsync(cancellationToken);
         }
@@ -183,6 +184,7 @@ internal sealed class ContentPageOperations(HomeDocsDbContext context, ContentFi
                 siblings[index].Position = index;
         }
         await context.SaveChangesAsync(cancellationToken);
+        await SearchIndex.RemoveAsync(context, id, cancellationToken);
         try { await transaction.CommitAsync(cancellationToken); }
         catch (Exception error)
         {
