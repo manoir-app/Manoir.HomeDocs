@@ -57,6 +57,21 @@ public static class UsageContextEndpoints
                 _ => Results.NotFound()
             };
         });
+        publicApi.MapGet("/search", async (
+            string? q,
+            string? context,
+            string? profile,
+            string? device,
+            SearchLogic search,
+            PublicPinAuthorization pinAuthorization,
+            HttpContext httpContext,
+            CancellationToken cancellationToken) =>
+        {
+            httpContext.Response.Headers.CacheControl = "no-store";
+            var authorized = await HasGrantForContextAsync(context, pinAuthorization, httpContext);
+            var response = await search.SearchAsync(context, profile, device, q, authorized, SearchLogic.DefaultLimit, cancellationToken);
+            return response is null ? Results.NotFound() : Results.Ok(response);
+        });
         publicApi.MapPost("/access/pin", VerifyPinAsync)
             .AddEndpointFilter<AntiforgeryFilter>()
             .RequireRateLimiting("public-pin");

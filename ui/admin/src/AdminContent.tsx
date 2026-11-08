@@ -6,17 +6,23 @@ import { languages } from '@codemirror/language-data';
 import { EditorView } from '@codemirror/view';
 import { Button, Card, Field, TextField } from '@manoir-app/core-admin-ui-kit';
 import ReactMarkdown from 'react-markdown';
+import { MediaPicker } from './AdminMedia';
+import { PageHistoryPanel, PageLinksPanel } from './AdminPageHistory';
 import * as api from './adminContentApi';
 import type { ContentPage, ContentPageInput } from './adminContentApi';
 import * as contextApi from './adminContextApi';
 import type { AdminUsageContext } from './adminContextApi';
+import type { MediaItem } from './adminMediaApi';
 import * as treeApi from './adminTreeApi';
 import type { AdminTreeNode } from './adminTreeApi';
 import type { AdminRoute } from './adminRoutes';
 import type { TranslationKey } from './translations';
 
 interface Props {
-  route: Exclude<AdminRoute, { type: 'settings' | 'tree' | 'contexts' } | null>;
+  route: Exclude<
+    AdminRoute,
+    { type: 'settings' | 'tree' | 'contexts' | 'media' } | null
+  >;
   translate: (key: TranslationKey) => string;
   onNavigate: (route: AdminRoute) => void;
   onSessionExpired: () => void;
@@ -202,6 +208,8 @@ function PageEditor({
   const [placementChoice, setPlacementChoice] = useState('');
   const [placementLoading, setPlacementLoading] = useState(!pageId);
   const [preview, setPreview] = useState(false);
+  const [mediaOpen, setMediaOpen] = useState(false);
+  const editorView = useRef<EditorView | null>(null);
   const [loading, setLoading] = useState(Boolean(pageId));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<api.ContentFailure>();
@@ -325,6 +333,21 @@ function PageEditor({
     setForm((current) => ({ ...current, [key]: value }));
     setError(undefined);
     setNotice(undefined);
+  };
+
+  const insertMedia = (media: MediaItem) => {
+    const view = editorView.current;
+    if (view?.dom.isConnected) {
+      view.dispatch(view.state.replaceSelection(`${media.markdown}\n`));
+      view.focus();
+    } else {
+      setForm((current) => ({
+        ...current,
+        markdown: `${current.markdown.trimEnd()}${current.markdown.trim() ? '\n\n' : ''}${media.markdown}\n`,
+      }));
+    }
+    setError(undefined);
+    setNotice('mediaInserted');
   };
 
   const toPayload = (): ContentPageInput => ({
@@ -550,15 +573,32 @@ function PageEditor({
         </div>
         <div className="content-editor-toolbar">
           <h2>{t(preview ? 'preview' : 'markdown')}</h2>
-          <Button
-            type="button"
-            variant="secondary"
-            aria-pressed={preview}
-            onClick={() => setPreview((current) => !current)}
-          >
-            {t(preview ? 'markdown' : 'preview')}
-          </Button>
+          <div className="content-editor-tools">
+            <Button
+              type="button"
+              variant="secondary"
+              aria-expanded={mediaOpen}
+              onClick={() => setMediaOpen((current) => !current)}
+            >
+              {t(mediaOpen ? 'mediaInsertClose' : 'mediaInsert')}
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              aria-pressed={preview}
+              onClick={() => setPreview((current) => !current)}
+            >
+              {t(preview ? 'markdown' : 'preview')}
+            </Button>
+          </div>
         </div>
+        {mediaOpen && (
+          <MediaPicker
+            t={t}
+            onInsert={insertMedia}
+            onSessionExpired={onSessionExpired}
+          />
+        )}
         {preview ? (
           <div className="markdown-preview">
             <ReactMarkdown skipHtml>{form.markdown}</ReactMarkdown>
@@ -578,6 +618,9 @@ function PageEditor({
               }),
             ]}
             onChange={(markdownValue) => update('markdown', markdownValue)}
+            onCreateEditor={(view) => {
+              editorView.current = view;
+            }}
           />
         )}
         <div className="content-actions">
@@ -609,6 +652,24 @@ function PageEditor({
           )}
         </div>
       </form>
+      {page && (
+        <>
+          <PageLinksPanel
+            t={t}
+            pageId={page.id}
+            revision={page.revision}
+            onNavigatePage={(id) => onNavigate({ type: 'content-edit', id })}
+            onSessionExpired={onSessionExpired}
+          />
+          <PageHistoryPanel
+            t={t}
+            pageId={page.id}
+            revision={page.revision}
+            onRestored={() => void reload()}
+            onSessionExpired={onSessionExpired}
+          />
+        </>
+      )}
     </section>
   );
 }

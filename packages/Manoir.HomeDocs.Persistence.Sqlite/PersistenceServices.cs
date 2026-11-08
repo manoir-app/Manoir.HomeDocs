@@ -21,6 +21,14 @@ public static class PersistenceServices
         services.AddScoped(provider => new ContentFileStore(databasePath(provider), provider.GetRequiredService<ILogger<ContentFileStore>>()));
         services.AddScoped<IContentPageOperations, ContentPageOperations>();
         services.AddScoped<IPageTreeOperations, PageTreeOperations>();
+        services.AddScoped<ISearchOperations, SearchOperations>();
+        services.AddScoped<IContentHistoryOperations, ContentHistoryOperations>();
+        services.AddScoped<ContentHistoryLogic>();
+        services.AddScoped<PageLinkLogic>();
+        services.AddScoped(provider => new MediaFileStore(databasePath(provider)));
+        services.AddScoped<IMediaOperations, MediaOperations>();
+        services.AddScoped<MediaLogic>();
+        services.AddScoped<SearchLogic>();
         services.AddScoped<PageTreeLogic>();
         services.AddScoped<IUsageContextOperations, UsageContextOperations>();
         services.AddScoped<UsageContextLogic>();
@@ -35,5 +43,7 @@ public static class PersistenceServices
     {
         await using var scope = services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<HomeDocsDbContext>().Database.MigrateAsync(cancellationToken);
+        await SearchIndex.RebuildAsync(services, cancellationToken);
+        await ContentHistory.EnsureBaselineAsync(services, cancellationToken);
     }
 }

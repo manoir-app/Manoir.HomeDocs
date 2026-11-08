@@ -9,6 +9,8 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
     internal DbSet<ContentPageRedirectEntity> ContentPageRedirects => Set<ContentPageRedirectEntity>();
     internal DbSet<PageTreeNodeEntity> PageTreeNodes => Set<PageTreeNodeEntity>();
     internal DbSet<UsageContextEntity> UsageContexts => Set<UsageContextEntity>();
+    internal DbSet<MediaItemEntity> MediaItems => Set<MediaItemEntity>();
+    internal DbSet<ContentPageVersionEntity> ContentPageVersions => Set<ContentPageVersionEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,6 +71,44 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
             entity.HasIndex(node => new { node.ParentNodeId, node.Position });
             entity.HasIndex(node => new { node.PageId, node.IsLink });
             entity.HasIndex(node => node.PageId).IsUnique().HasFilter("\"IsLink\" = 0");
+        });
+
+        modelBuilder.Entity<ContentPageVersionEntity>(entity =>
+        {
+            entity.ToTable("ContentPageVersions", table =>
+            {
+                table.HasCheckConstraint("CK_ContentPageVersions_Revision", "\"Revision\" > 0");
+                table.HasCheckConstraint("CK_ContentPageVersions_Event", "\"Event\" IN ('created','edited','published','unpublished','restored','baseline')");
+            });
+            entity.HasKey(version => version.Id);
+            entity.Property(version => version.Event).IsRequired();
+            entity.Property(version => version.Title).HasMaxLength(200).IsRequired();
+            entity.Property(version => version.Slug).HasMaxLength(80).IsRequired();
+            entity.Property(version => version.Category).IsRequired();
+            entity.Property(version => version.ContextsJson).IsRequired();
+            entity.Property(version => version.Markdown).IsRequired();
+            entity.HasOne(version => version.Page).WithMany().HasForeignKey(version => version.PageId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(version => new { version.PageId, version.Revision }).IsUnique();
+        });
+
+        modelBuilder.Entity<MediaItemEntity>(entity =>
+        {
+            entity.ToTable("MediaItems", table =>
+            {
+                table.HasCheckConstraint("CK_MediaItems_Kind", "\"Kind\" IN ('image','pdf')");
+                table.HasCheckConstraint("CK_MediaItems_Size", "\"Size\" > 0");
+                table.HasCheckConstraint("CK_MediaItems_Revision", "\"Revision\" > 0");
+            });
+            entity.HasKey(media => media.Id);
+            entity.Property(media => media.Id).ValueGeneratedNever();
+            entity.Property(media => media.Name).HasMaxLength(128).IsRequired();
+            entity.Property(media => media.Kind).IsRequired();
+            entity.Property(media => media.ContentType).IsRequired();
+            entity.Property(media => media.Title).HasMaxLength(200).IsRequired();
+            entity.Property(media => media.AltText).HasMaxLength(300).IsRequired();
+            entity.Property(media => media.Folder).HasMaxLength(64).IsRequired();
+            entity.Property(media => media.Revision).IsConcurrencyToken();
+            entity.HasIndex(media => media.Folder);
         });
 
         modelBuilder.Entity<UsageContextEntity>(entity =>

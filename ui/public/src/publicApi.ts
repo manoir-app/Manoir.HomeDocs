@@ -38,6 +38,23 @@ export interface PublicPage {
   requiresAuthentication: boolean;
 }
 
+export interface PublicSearchResult {
+  pageId: string;
+  title: string;
+  slug: string;
+  category: string;
+  summary: string;
+  excerpt: string | null;
+  requiresAuthentication: boolean;
+  path: string[];
+}
+
+export interface PublicSearchResponse {
+  query: string;
+  corrected: boolean;
+  results: PublicSearchResult[];
+}
+
 export type PublicFailure =
   | 'invalidInvocation'
   | 'pinRequired'
@@ -141,6 +158,49 @@ function parsePage(value: unknown): PublicPage {
   };
 }
 
+function parseSearchResult(value: unknown): PublicSearchResult {
+  if (
+    !isObject(value) ||
+    typeof value.pageId !== 'string' ||
+    typeof value.title !== 'string' ||
+    typeof value.slug !== 'string' ||
+    typeof value.category !== 'string' ||
+    typeof value.summary !== 'string' ||
+    (value.excerpt !== null && typeof value.excerpt !== 'string') ||
+    typeof value.requiresAuthentication !== 'boolean' ||
+    !Array.isArray(value.path) ||
+    !value.path.every((item): item is string => typeof item === 'string')
+  ) {
+    throw new PublicApiError('unavailable');
+  }
+  return {
+    pageId: value.pageId,
+    title: value.title,
+    slug: value.slug,
+    category: value.category,
+    summary: value.summary,
+    excerpt: value.excerpt,
+    requiresAuthentication: value.requiresAuthentication,
+    path: value.path,
+  };
+}
+
+function parseSearchResponse(value: unknown): PublicSearchResponse {
+  if (
+    !isObject(value) ||
+    typeof value.query !== 'string' ||
+    typeof value.corrected !== 'boolean' ||
+    !Array.isArray(value.results)
+  ) {
+    throw new PublicApiError('unavailable');
+  }
+  return {
+    query: value.query,
+    corrected: value.corrected,
+    results: value.results.map(parseSearchResult),
+  };
+}
+
 function query(invocation: PublicInvocation): string {
   if (!invocation.context || !isDisplayProfile(invocation.profile))
     throw new PublicApiError('invalidInvocation');
@@ -195,6 +255,19 @@ export async function getPage(
     `/api/public/pages/${encodeURIComponent(slug)}?${query(invocation)}`,
   );
   return parsePage(await response.json());
+}
+
+export async function searchPages(
+  text: string,
+  invocation: PublicInvocation,
+  signal?: AbortSignal,
+): Promise<PublicSearchResponse> {
+  const search = new URLSearchParams(query(invocation));
+  search.set('q', text);
+  const response = await request(`/api/public/search?${search.toString()}`, {
+    signal,
+  });
+  return parseSearchResponse(await response.json());
 }
 
 export async function verifyPin(

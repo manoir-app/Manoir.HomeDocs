@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { FormEvent, MouseEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { PublicInvocation, PublicNavigationItem } from './publicApi';
+import { SearchBox } from './SearchBox';
 import { usePublicManual } from './usePublicManual';
 import './app.css';
 
@@ -255,6 +256,11 @@ export function App() {
       </header>
       <div className="public-layout">
         <aside className="public-navigation">
+          <SearchBox
+            invocation={route.invocation}
+            hrefFor={(slug) => makeHref(slug, route.invocation)}
+            onOpen={(event, slug) => handleNavigation(event, slug, navigate)}
+          />
           <nav aria-label={t.navigation}>
             <h2>{t.navigation}</h2>
             {navigation ? (
@@ -299,6 +305,14 @@ export function App() {
               skipHtml
               urlTransform={safeLocalUrl}
               components={{
+                img: ({ src, alt }) =>
+                  src ? (
+                    <img
+                      src={preserveInvocation(src, route.invocation)}
+                      alt={alt ?? ''}
+                      loading="lazy"
+                    />
+                  ) : null,
                 a: ({ href, children }) => {
                   if (!href) return <>{children}</>;
                   return (
