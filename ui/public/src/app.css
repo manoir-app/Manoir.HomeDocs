@@ -497,3 +497,60 @@ input:focus-visible {
   margin: 0;
   font-size: 0.88rem;
 }
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--hd-accent);
+  color: var(--hd-on-accent);
+  font-weight: 700;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The page receives the focus after a navigation; it does not need a ring of its own. */
+.public-page:focus {
+  outline: none;
+}
+
+/* A focus ring that stays visible on any theme: two contrasting rings. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 0.25rem solid var(--hd-focus);
+  outline-offset: 0.2rem;
+  box-shadow: 0 0 0 0.45rem var(--hd-bg);
+}
+
+.profile-tv a:focus-visible,
+.profile-tv button:focus-visible,
+.profile-tv input:focus-visible,
+.profile-tablet-wall a:focus-visible,
+.profile-tablet-dock a:focus-visible {
+  outline-width: 0.35rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

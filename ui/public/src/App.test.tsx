@@ -489,4 +489,125 @@ describe('lecteur public', () => {
     expect(document.head.querySelector('style[data-device-css]')).toBeNull();
     expect(document.documentElement.style.getPropertyValue('--hd-bg')).toBe('');
   });
+
+  describe('clavier et télécommande', () => {
+    const child = (slug: string, title: string) => ({
+      ...root,
+      nodeId: `${slug}-node`,
+      pageId: `${slug}-page`,
+      title,
+      slug,
+    });
+    const withChildren = {
+      ...navigation,
+      root: {
+        ...root,
+        children: [child('cuisine', 'Cuisine'), child('salon', 'Salon')],
+      },
+      children: [child('cuisine', 'Cuisine'), child('salon', 'Salon')],
+    };
+
+    beforeEach(() => {
+      mocks.getNavigation.mockResolvedValue(withChildren);
+      mocks.getPage.mockImplementation(async (slug: string) => ({
+        ...page(slug),
+        title:
+          slug === 'cuisine'
+            ? 'Cuisine'
+            : slug === 'salon'
+              ? 'Salon'
+              : 'Accueil',
+        markdown: '[Autre page](/salon)\n\nTexte.',
+      }));
+    });
+
+    it('propose un lien d’évitement et un contenu principal ciblable', async () => {
+      setUrl('/accueil');
+      render(<App />);
+      const skip = await screen.findByRole('link', {
+        name: 'Aller au contenu',
+      });
+      expect(skip).toHaveAttribute('href', '#contenu');
+      expect(screen.getByRole('main')).toHaveAttribute('id', 'contenu');
+    });
+
+    it('déplace le focus avec les flèches entre la navigation et la page', async () => {
+      setUrl('/cuisine');
+      render(<App />);
+      const cuisine = await screen.findByRole('link', { name: 'Cuisine' });
+      const salon = screen.getByRole('link', { name: 'Salon' });
+      cuisine.focus();
+
+      fireEvent.keyDown(cuisine, { key: 'ArrowDown' });
+      expect(salon).toHaveFocus();
+      fireEvent.keyDown(salon, { key: 'ArrowUp' });
+      expect(cuisine).toHaveFocus();
+
+      fireEvent.keyDown(cuisine, { key: 'ArrowRight' });
+      expect(screen.getByRole('main').contains(document.activeElement)).toBe(
+        true,
+      );
+
+      fireEvent.keyDown(document.activeElement!, { key: 'ArrowLeft' });
+      expect(cuisine).toHaveFocus();
+    });
+
+    it('Échap revient à la page précédente du manuel puis à la racine, sans quitter le manuel', async () => {
+      setUrl('/accueil');
+      window.history.replaceState({ depth: 0 }, '', window.location.href);
+      render(<App />);
+      fireEvent.click(await screen.findByRole('link', { name: 'Cuisine' }));
+      expect(
+        await screen.findByRole('heading', { name: 'Cuisine' }),
+      ).toBeVisible();
+      expect(window.history.state).toEqual({ depth: 1 });
+
+      const back = vi
+        .spyOn(window.history, 'back')
+        .mockImplementation(() => {});
+      fireEvent.keyDown(screen.getByRole('link', { name: 'Cuisine' }), {
+        key: 'Escape',
+      });
+      expect(back).toHaveBeenCalledTimes(1);
+      back.mockRestore();
+
+      // Without history of its own, Back goes to the context root.
+      window.history.replaceState({ depth: 0 }, '', window.location.href);
+      fireEvent.keyDown(screen.getByRole('link', { name: 'Cuisine' }), {
+        key: 'BrowserBack',
+      });
+      await waitFor(() => expect(window.location.pathname).toBe('/'));
+    });
+
+    it('laisse la recherche effacer sa saisie avant de revenir en arrière', async () => {
+      setUrl('/cuisine');
+      window.history.replaceState({ depth: 3 }, '', window.location.href);
+      const back = vi
+        .spyOn(window.history, 'back')
+        .mockImplementation(() => {});
+      mocks.searchPages.mockResolvedValue({ results: [], corrected: false });
+      render(<App />);
+      const input = await screen.findByRole('searchbox');
+      fireEvent.change(input, { target: { value: 'four' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(back).not.toHaveBeenCalled();
+      expect(input).toHaveValue('');
+      fireEvent.keyDown(input, { key: 'Escape' });
+      expect(back).toHaveBeenCalledTimes(1);
+      back.mockRestore();
+    });
+
+    it('met le focus sur la page après une navigation et l’annonce', async () => {
+      setUrl('/accueil');
+      render(<App />);
+      fireEvent.click(await screen.findByRole('link', { name: 'Salon' }));
+      await screen.findByRole('heading', { name: 'Salon' });
+      await waitFor(() => expect(screen.getByRole('main')).toHaveFocus());
+      expect(
+        screen
+          .getAllByRole('status')
+          .some((node) => node.textContent === 'Salon'),
+      ).toBe(true);
+    });
+  });
 });
