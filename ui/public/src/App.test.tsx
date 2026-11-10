@@ -597,6 +597,83 @@ describe('lecteur public', () => {
       back.mockRestore();
     });
 
+    it('revient à la racine du contexte après inactivité sur un écran à télécommande', async () => {
+      const theme = {
+        colorScheme: 'light' as const,
+        colors: {
+          background: '#ffffff',
+          surface: '#ffffff',
+          text: '#000000',
+          mutedText: '#333333',
+          accent: '#006600',
+          accentText: '#ffffff',
+          border: '#cccccc',
+          focus: '#cc6600',
+        },
+        style: {
+          fontFamily: 'system',
+          radiusPx: 8,
+          shadow: 'none',
+          iconSizePx: 24,
+        },
+      };
+      mocks.getAppearance.mockResolvedValue({
+        profile: 'desktop',
+        themeMode: 'light',
+        light: theme,
+        dark: theme,
+        layout: {
+          fontSizePx: 24,
+          typeScale: 1,
+          spacingScale: 1,
+          maxColumns: 3,
+          cardSize: 'large',
+          interactionMode: 'remote',
+          minTargetPx: 64,
+          contentMaxWidthPx: 1200,
+          showTouchActions: false,
+          showPresentation: true,
+        },
+      });
+      setUrl('/cuisine');
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        render(<App />);
+        await screen.findByRole('heading', { name: 'Cuisine' });
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(119_000);
+        });
+        expect(window.location.pathname).toBe('/cuisine');
+        fireEvent.keyDown(document.body, { key: 'ArrowDown' }); // activity postpones the return
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(119_000);
+        });
+        expect(window.location.pathname).toBe('/cuisine');
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(2_000);
+        });
+        expect(window.location.pathname).toBe('/');
+        expect(window.location.search).toContain('context=habitant');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('ne revient pas à la racine tout seul avec la souris ou le tactile', async () => {
+      setUrl('/cuisine');
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        render(<App />);
+        await screen.findByRole('heading', { name: 'Cuisine' });
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(600_000);
+        });
+        expect(window.location.pathname).toBe('/cuisine');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it('met le focus sur la page après une navigation et l’annonce', async () => {
       setUrl('/accueil');
       render(<App />);

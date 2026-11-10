@@ -83,7 +83,9 @@ export function appearanceVariables(
  * Loads the appearance of the current invocation and applies it to the document.
  * A failure keeps the built-in look: the manual must stay readable without it.
  */
-export function useAppearance(invocation: PublicInvocation): void {
+export function useAppearance(
+  invocation: PublicInvocation,
+): PublicAppearance | undefined {
   const [appearance, setAppearance] = useState<PublicAppearance>();
   const prefersDark = useDarkPreference();
   const { context, profile, device } = invocation;
@@ -132,4 +134,5 @@ export function useAppearance(invocation: PublicInvocation): void {
       delete document.documentElement.dataset.appearance;
     };
   }, [appearance, prefersDark]);
+  return appearance;
 }

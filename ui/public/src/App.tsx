@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import type { PublicInvocation, PublicNavigationItem } from './publicApi';
 import { SearchBox } from './SearchBox';
 import { useAppearance } from './appearance';
-import { useKeyboardNavigation } from './useKeyboardNavigation';
+import { useIdleReturn, useKeyboardNavigation } from './useKeyboardNavigation';
 import { usePublicManual } from './usePublicManual';
 import './app.css';
 
@@ -130,7 +130,7 @@ export function App() {
     [navigate],
   );
   const manual = usePublicManual(route.invocation, route.slug, replaceSlug);
-  useAppearance(route.invocation);
+  const appearance = useAppearance(route.invocation);
 
   const shellRef = useRef<HTMLDivElement>(null);
   const goBack = useCallback(() => {
@@ -138,6 +138,18 @@ export function App() {
     else if (route.slug) navigate(null);
   }, [navigate, route.slug]);
   useKeyboardNavigation(shellRef, goBack, true);
+
+  // A remote-controlled screen returns to the root of its context after a
+  // period of inactivity. The context itself never changes.
+  const rootSlug = manual.state.navigation?.root.slug;
+  const returnToRoot = useCallback(() => navigate(null, true), [navigate]);
+  useIdleReturn(
+    appearance?.layout.interactionMode === 'remote' &&
+      !!rootSlug &&
+      !!route.slug &&
+      route.slug !== rootSlug,
+    returnToRoot,
+  );
 
   // After a page change, the focus moves to the page so that the keyboard
   // continues from there, and the change is announced.

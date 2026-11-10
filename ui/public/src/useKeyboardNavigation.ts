@@ -104,3 +104,31 @@ export function useKeyboardNavigation(
     return () => document.removeEventListener('keydown', handle);
   }, [shell, onBack, enabled]);
 }
+
+export const IdleReturnDelayMs = 120_000;
+
+/**
+ * Calls onIdle once after a period without any key, pointer or touch activity.
+ * Used by remote-controlled screens to come back to the root of the current context.
+ */
+export function useIdleReturn(
+  enabled: boolean,
+  onIdle: () => void,
+  delayMs: number = IdleReturnDelayMs,
+): void {
+  useEffect(() => {
+    if (!enabled) return;
+    let timer = window.setTimeout(onIdle, delayMs);
+    const reset = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(onIdle, delayMs);
+    };
+    const events = ['keydown', 'pointerdown', 'touchstart', 'wheel'] as const;
+    for (const name of events)
+      document.addEventListener(name, reset, { passive: true });
+    return () => {
+      window.clearTimeout(timer);
+      for (const name of events) document.removeEventListener(name, reset);
+    };
+  }, [enabled, onIdle, delayMs]);
+}
