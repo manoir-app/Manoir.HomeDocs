@@ -325,3 +325,111 @@ export async function logoutProtectedAccess(): Promise<void> {
   });
   if (!response.ok) throw new PublicApiError('unavailable');
 }
+
+export interface PublicThemeColors {
+  background: string;
+  surface: string;
+  text: string;
+  mutedText: string;
+  accent: string;
+  accentText: string;
+  border: string;
+  focus: string;
+}
+
+export interface PublicTheme {
+  colorScheme: 'light' | 'dark';
+  colors: PublicThemeColors;
+  style: {
+    fontFamily: string;
+    radiusPx: number;
+    shadow: string;
+    iconSizePx: number;
+  };
+}
+
+export interface PublicLayout {
+  fontSizePx: number;
+  typeScale: number;
+  spacingScale: number;
+  maxColumns: number;
+  cardSize: string;
+  interactionMode: string;
+  minTargetPx: number;
+  contentMaxWidthPx: number;
+  showTouchActions: boolean;
+  showPresentation: boolean;
+}
+
+export interface PublicAppearance {
+  profile: string;
+  themeMode: 'system' | 'light' | 'dark';
+  light: PublicTheme;
+  dark: PublicTheme;
+  layout: PublicLayout;
+}
+
+const colorKeys = [
+  'background',
+  'surface',
+  'text',
+  'mutedText',
+  'accent',
+  'accentText',
+  'border',
+  'focus',
+] as const;
+
+function parseTheme(value: unknown): PublicTheme {
+  if (!isObject(value) || !isObject(value.colors) || !isObject(value.style))
+    throw new PublicApiError('unavailable');
+  const { colors, style } = value;
+  if (value.colorScheme !== 'light' && value.colorScheme !== 'dark')
+    throw new PublicApiError('unavailable');
+  for (const key of colorKeys) {
+    const color = colors[key];
+    if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color))
+      throw new PublicApiError('unavailable');
+  }
+  if (
+    typeof style.fontFamily !== 'string' ||
+    typeof style.radiusPx !== 'number' ||
+    typeof style.shadow !== 'string' ||
+    typeof style.iconSizePx !== 'number'
+  )
+    throw new PublicApiError('unavailable');
+  return value as unknown as PublicTheme;
+}
+
+export function parseAppearance(value: unknown): PublicAppearance {
+  if (!isObject(value) || !isObject(value.layout))
+    throw new PublicApiError('unavailable');
+  const layout = value.layout;
+  const numbers = [
+    'fontSizePx',
+    'typeScale',
+    'spacingScale',
+    'maxColumns',
+    'minTargetPx',
+    'contentMaxWidthPx',
+  ] as const;
+  if (
+    numbers.some((key) => typeof layout[key] !== 'number') ||
+    typeof layout.cardSize !== 'string' ||
+    typeof layout.interactionMode !== 'string' ||
+    (value.themeMode !== 'system' &&
+      value.themeMode !== 'light' &&
+      value.themeMode !== 'dark')
+  )
+    throw new PublicApiError('unavailable');
+  parseTheme(value.light);
+  parseTheme(value.dark);
+  return value as unknown as PublicAppearance;
+}
+
+export async function getAppearance(
+  invocation: PublicInvocation,
+): Promise<PublicAppearance> {
+  const response = await request(`/api/public/appearance?${query(invocation)}`);
+  return parseAppearance(await response.json());
+}

@@ -8,6 +8,7 @@ export type AdminRoute =
   | { type: 'tree' }
   | { type: 'contexts' }
   | { type: 'media' }
+  | { type: 'appearance' }
   | null;
 
 export function adminRouteFromPath(path: string): AdminRoute {
@@ -34,6 +35,7 @@ export function adminRouteFromPath(path: string): AdminRoute {
   if (segments[2] === 'tree') return { type: 'tree' };
   if (segments[2] === 'contexts') return { type: 'contexts' };
   if (segments[2] === 'media') return { type: 'media' };
+  if (segments[2] === 'appearance') return { type: 'appearance' };
   return null;
 }
 
@@ -54,5 +56,6 @@ export function adminRoutePath(route: AdminRoute): string {
   if (route.type === 'tree') return '/admin/tree';
   if (route.type === 'contexts') return '/admin/contexts';
   if (route.type === 'media') return '/admin/media';
+  if (route.type === 'appearance') return '/admin/appearance';
   return '/admin/';
 }

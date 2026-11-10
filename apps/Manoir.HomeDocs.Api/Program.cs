@@ -143,6 +143,7 @@ app.MapContentHistoryEndpoints();
 app.MapPageTreeEndpoints();
 app.MapUsageContextEndpoints();
 app.MapMediaEndpoints();
+app.MapAppearanceEndpoints();
 app.MapDemoDataEndpoints();
 app.MapGet("/admin/login", (HttpContext context) => SendIndex(context, adminRoot));
 app.MapGet("/admin/setup", (HttpContext context) => SendIndex(context, adminRoot));

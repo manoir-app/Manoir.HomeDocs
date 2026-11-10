@@ -3,6 +3,7 @@ import type { FormEvent, MouseEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { PublicInvocation, PublicNavigationItem } from './publicApi';
 import { SearchBox } from './SearchBox';
+import { useAppearance } from './appearance';
 import { usePublicManual } from './usePublicManual';
 import './app.css';
 
@@ -114,6 +115,7 @@ export function App() {
     [navigate],
   );
   const manual = usePublicManual(route.invocation, route.slug, replaceSlug);
+  useAppearance(route.invocation);
 
   useEffect(() => {
     document.documentElement.lang = 'fr';

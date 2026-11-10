@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   refreshProtectedAccess: vi.fn(),
   logoutProtectedAccess: vi.fn(),
   searchPages: vi.fn(),
+  getAppearance: vi.fn(),
 }));
 
 vi.mock('./publicApi', async (importOriginal) => {
@@ -29,6 +30,7 @@ vi.mock('./publicApi', async (importOriginal) => {
     refreshProtectedAccess: mocks.refreshProtectedAccess,
     logoutProtectedAccess: mocks.logoutProtectedAccess,
     searchPages: mocks.searchPages,
+    getAppearance: mocks.getAppearance,
   };
 });
 
@@ -79,6 +81,8 @@ function setUrl(path: string) {
 
 describe('lecteur public', () => {
   beforeEach(() => {
+    mocks.getAppearance.mockReset();
+    mocks.getAppearance.mockRejectedValue(new PublicApiError('notFound'));
     mocks.getNavigation.mockReset();
     mocks.getPage.mockReset();
     mocks.verifyPin.mockReset();
@@ -425,5 +429,59 @@ describe('lecteur public', () => {
       `/api/public/media/22222222-2222-2222-2222-222222222222${query}`,
     );
     expect(screen.queryByRole('img', { name: 'Externe' })).toBeNull();
+  });
+
+  it('applies the appearance of the profile and removes it on unmount', async () => {
+    const theme = {
+      colorScheme: 'dark' as const,
+      colors: {
+        background: '#101010',
+        surface: '#181818',
+        text: '#f0f0f0',
+        mutedText: '#bbbbbb',
+        accent: '#ffd400',
+        accentText: '#000000',
+        border: '#333333',
+        focus: '#00ffff',
+      },
+      style: {
+        fontFamily: 'system',
+        radiusPx: 8,
+        shadow: 'none',
+        iconSizePx: 24,
+      },
+    };
+    mocks.getAppearance.mockResolvedValue({
+      profile: 'desktop',
+      themeMode: 'dark',
+      light: theme,
+      dark: theme,
+      layout: {
+        fontSizePx: 20,
+        typeScale: 1,
+        spacingScale: 1,
+        maxColumns: 3,
+        cardSize: 'comfortable',
+        interactionMode: 'pointer',
+        minTargetPx: 44,
+        contentMaxWidthPx: 1000,
+        showTouchActions: false,
+        showPresentation: true,
+      },
+    });
+    mocks.getNavigation.mockResolvedValue(navigation);
+    mocks.getPage.mockResolvedValue(page('accueil'));
+    setUrl('/accueil');
+    const view = render(<App />);
+    await waitFor(() =>
+      expect(document.documentElement.style.getPropertyValue('--hd-bg')).toBe(
+        '#101010',
+      ),
+    );
+    expect(
+      document.documentElement.style.getPropertyValue('--hd-base-size'),
+    ).toBe('20px');
+    view.unmount();
+    expect(document.documentElement.style.getPropertyValue('--hd-bg')).toBe('');
   });
 });
