@@ -115,7 +115,16 @@ export function useAppearance(invocation: PublicInvocation): void {
       else style.setProperty(name, value);
     }
     document.documentElement.dataset.appearance = appearance.profile;
+    // Device CSS goes in as text of a style element, never as markup.
+    let deviceStyle: HTMLStyleElement | undefined;
+    if (appearance.customCss) {
+      deviceStyle = document.createElement('style');
+      deviceStyle.dataset.deviceCss = '';
+      deviceStyle.textContent = appearance.customCss;
+      document.head.appendChild(deviceStyle);
+    }
     return () => {
+      deviceStyle?.remove();
       for (const name of Object.keys(variables)) {
         if (name === 'colorScheme') style.removeProperty('color-scheme');
         else style.removeProperty(name);

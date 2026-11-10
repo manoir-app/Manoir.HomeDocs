@@ -12,6 +12,7 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
     internal DbSet<MediaItemEntity> MediaItems => Set<MediaItemEntity>();
     internal DbSet<ContentPageVersionEntity> ContentPageVersions => Set<ContentPageVersionEntity>();
     internal DbSet<ThemeEntity> Themes => Set<ThemeEntity>();
+    internal DbSet<DeviceEntity> Devices => Set<DeviceEntity>();
     internal DbSet<ProfileSettingsEntity> ProfileSettings => Set<ProfileSettingsEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -127,6 +128,21 @@ public sealed class HomeDocsDbContext(DbContextOptions<HomeDocsDbContext> option
             entity.Property(theme => theme.ColorScheme).IsRequired();
             entity.Property(theme => theme.DataJson).IsRequired();
             entity.Property(theme => theme.Revision).IsConcurrencyToken();
+        });
+
+        modelBuilder.Entity<DeviceEntity>(entity =>
+        {
+            entity.ToTable("Devices", table =>
+            {
+                table.HasCheckConstraint("CK_Devices_Revision", "\"Revision\" > 0");
+                table.HasCheckConstraint("CK_Devices_Override", "json_valid(\"OverrideJson\")");
+            });
+            entity.HasKey(device => device.Id);
+            entity.Property(device => device.Id).HasMaxLength(128).ValueGeneratedNever();
+            entity.Property(device => device.Name).HasMaxLength(128).IsRequired();
+            entity.Property(device => device.OverrideJson).IsRequired();
+            entity.Property(device => device.CustomCss).IsRequired();
+            entity.Property(device => device.Revision).IsConcurrencyToken();
         });
 
         modelBuilder.Entity<ProfileSettingsEntity>(entity =>

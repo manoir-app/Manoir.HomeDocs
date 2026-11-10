@@ -77,7 +77,7 @@ public sealed class ContentPagePersistenceTests : IAsyncLifetime
         await using (var scope = upgrade.CreateAsyncScope())
         {
             Assert.NotNull(await scope.ServiceProvider.GetRequiredService<IAdministratorOperations>().FindByNormalizedUserNameAsync("ADMIN"));
-            Assert.Equal(7, (await scope.ServiceProvider.GetRequiredService<HomeDocsDbContext>().Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(8, (await scope.ServiceProvider.GetRequiredService<HomeDocsDbContext>().Database.GetAppliedMigrationsAsync()).Count());
             Assert.Empty(await scope.ServiceProvider.GetRequiredService<IPageTreeOperations>().ListAsync());
         }
 

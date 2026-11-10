@@ -197,6 +197,45 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.DeviceEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CustomCss")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OverrideJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Devices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Devices_Override", "json_valid(\"OverrideJson\")");
+
+                            t.HasCheckConstraint("CK_Devices_Revision", "\"Revision\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.MediaItemEntity", b =>
                 {
                     b.Property<Guid>("Id")

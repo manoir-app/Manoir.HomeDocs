@@ -63,4 +63,35 @@ public sealed record PublicAppearance(
     string ThemeMode,
     PublicTheme Light,
     PublicTheme Dark,
-    ProfileLayout Layout);
+    ProfileLayout Layout,
+    string? CustomCss = null);
+
+/// <summary>
+/// Design settings of one device. A null field inherits the profile; nothing here touches navigation or permissions.
+/// </summary>
+public sealed record DeviceOverride(
+    string? Mode = null,
+    string? LightThemeId = null,
+    string? DarkThemeId = null,
+    int? FontSizePx = null,
+    double? TypeScale = null,
+    double? SpacingScale = null,
+    int? MaxColumns = null,
+    string? CardSize = null,
+    string? InteractionMode = null,
+    int? MinTargetPx = null,
+    int? ContentMaxWidthPx = null,
+    bool? ShowTouchActions = null,
+    bool? ShowPresentation = null);
+
+/// <summary>A registered screen. LastSeenAt is the last time its appearance was requested.</summary>
+public sealed record Device(
+    string Id,
+    string Name,
+    bool IsActive,
+    DateTimeOffset? LastSeenAt,
+    DeviceOverride Override,
+    string CustomCss,
+    long Revision);
+
+public sealed record DeviceInput(string? Id, string? Name, bool IsActive, DeviceOverride? Override, string? CustomCss);

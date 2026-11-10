@@ -230,6 +230,28 @@ const translations = {
       'Un autre changement a eu lieu entre-temps. Rechargez la page.',
     appearanceUnavailable:
       'Impossible de charger ou d’enregistrer l’apparence.',
+    devicesTitle: 'Écrans (devices)',
+    devicesDescription:
+      'Un écran enregistré peut surcharger le design de son profil, avec du CSS en plus, sans toucher à la navigation ni aux accès. Il est invoqué avec « &device=identifiant ».',
+    devicesNone: 'Aucun écran enregistré.',
+    deviceNew: 'Nouvel écran',
+    deviceName: 'Nom de l’écran',
+    deviceActiveLabel: 'Actif (sinon le profil s’applique tel quel)',
+    deviceActive: 'actif',
+    deviceInactive: 'inactif',
+    deviceLastSeen: 'Dernière connexion :',
+    deviceNeverSeen: 'Jamais connecté.',
+    deviceInherit: 'Hérité du profil',
+    deviceOverrideHelp:
+      'Laissez « hérité » pour reprendre le réglage du profil.',
+    deviceCss: 'CSS supplémentaire',
+    deviceCssHelp:
+      'Appliqué à cet écran seulement, après le design du profil. « @import » et les balises sont refusés.',
+    deviceSave: 'Enregistrer l’écran',
+    deviceSaved: 'Écran enregistré.',
+    deviceDelete: 'Supprimer l’écran',
+    deviceDeleted: 'Écran supprimé.',
+    deviceDeleteConfirm: 'Supprimer cet écran et son override ?',
     history: 'Historique',
     historyHelp:
       'Chaque enregistrement, publication et restauration crée une version. Restaurer reprend le titre, la catégorie, les contextes, la protection et le contenu, mais garde l’adresse et l’état de publication actuels.',
@@ -582,6 +604,27 @@ const translations = {
     appearanceConflict:
       'Something else changed in the meantime. Reload the page.',
     appearanceUnavailable: 'Could not load or save the appearance.',
+    devicesTitle: 'Screens (devices)',
+    devicesDescription:
+      'A registered screen can override its profile design, with extra CSS, without touching navigation or access. It is invoked with “&device=identifier”.',
+    devicesNone: 'No registered screen.',
+    deviceNew: 'New screen',
+    deviceName: 'Screen name',
+    deviceActiveLabel: 'Active (otherwise the profile applies as is)',
+    deviceActive: 'active',
+    deviceInactive: 'inactive',
+    deviceLastSeen: 'Last connection:',
+    deviceNeverSeen: 'Never connected.',
+    deviceInherit: 'Inherited from profile',
+    deviceOverrideHelp: 'Leave “inherited” to keep the profile setting.',
+    deviceCss: 'Extra CSS',
+    deviceCssHelp:
+      'Applied to this screen only, after the profile design. “@import” and tags are rejected.',
+    deviceSave: 'Save screen',
+    deviceSaved: 'Screen saved.',
+    deviceDelete: 'Delete screen',
+    deviceDeleted: 'Screen deleted.',
+    deviceDeleteConfirm: 'Delete this screen and its override?',
     history: 'History',
     historyHelp:
       'Every save, publication, and restore creates a version. Restoring brings back the title, category, contexts, protection, and content, but keeps the current address and publication state.',

@@ -31,3 +31,17 @@ public interface IProfileSettingsOperations
 
     Task<AppearanceWriteResult> ResetAsync(string profileId, CancellationToken cancellationToken = default);
 }
+
+public interface IDeviceOperations
+{
+    Task<IReadOnlyList<Device>> ListAsync(CancellationToken cancellationToken = default);
+    Task<Device?> FindAsync(string id, CancellationToken cancellationToken = default);
+
+    /// <summary>Creates the device (Conflict if the id exists) or updates it when the revision matches. LastSeenAt is kept.</summary>
+    Task<AppearanceWriteResult> SaveAsync(Device device, bool isNew, CancellationToken cancellationToken = default);
+
+    Task<AppearanceWriteResult> DeleteAsync(string id, long revision, CancellationToken cancellationToken = default);
+
+    /// <summary>Records a connection without changing the revision. Does nothing for an unknown device.</summary>
+    Task TouchAsync(string id, DateTimeOffset now, CancellationToken cancellationToken = default);
+}

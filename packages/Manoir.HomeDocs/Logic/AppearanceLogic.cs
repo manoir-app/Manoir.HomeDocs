@@ -17,6 +17,7 @@ public enum AppearanceResult
 public sealed partial class AppearanceLogic(
     IThemeOperations themes,
     IProfileSettingsOperations profiles,
+    IDeviceOperations devices,
     UsageContextLogic contexts)
 {
     public const string LightThemeId = "clair";
@@ -80,7 +81,9 @@ public sealed partial class AppearanceLogic(
     {
         if (BuiltInThemes.Any(item => item.Id == id)) return AppearanceResult.BuiltIn;
         var used = (await ListProfilesAsync(cancellationToken)).Any(profile =>
-            profile.Theme.LightThemeId == id || profile.Theme.DarkThemeId == id);
+                       profile.Theme.LightThemeId == id || profile.Theme.DarkThemeId == id) ||
+                   (await devices.ListAsync(cancellationToken)).Any(device =>
+                       device.Override.LightThemeId == id || device.Override.DarkThemeId == id);
         if (used) return AppearanceResult.InUse;
         return ToResult(await themes.DeleteAsync(id, revision, cancellationToken));
     }
@@ -170,16 +173,105 @@ public sealed partial class AppearanceLogic(
         if (!await contexts.IsKnownInvocationAsync(contextId, profile, device, cancellationToken)) return null;
         var settings = await GetProfileAsync(profile!, cancellationToken);
         if (settings is null) return null;
-        var light = await FindThemeAsync(settings.Theme.LightThemeId, cancellationToken) ?? BuiltInThemes[0];
-        var dark = await FindThemeAsync(settings.Theme.DarkThemeId, cancellationToken) ?? BuiltInThemes[1];
-        var (shownLight, shownDark) = settings.Theme.Mode switch
+        var theme = settings.Theme;
+        var layout = settings.Layout;
+        string? css = null;
+        var registered = device is null ? null : await devices.FindAsync(device, cancellationToken);
+        if (registered is { IsActive: true })
+        {
+            (theme, layout) = ApplyOverride(theme, layout, registered.Override);
+            css = registered.CustomCss.Length > 0 ? registered.CustomCss : null;
+            await devices.TouchAsync(registered.Id, DateTimeOffset.UtcNow, cancellationToken);
+        }
+
+        var light = await FindThemeAsync(theme.LightThemeId, cancellationToken) ?? BuiltInThemes[0];
+        var dark = await FindThemeAsync(theme.DarkThemeId, cancellationToken) ?? BuiltInThemes[1];
+        var (shownLight, shownDark) = theme.Mode switch
         {
             "light" => (light, light),
             "dark" => (dark, dark),
             _ => (light, dark)
         };
-        return new PublicAppearance(settings.ProfileId, settings.Theme.Mode, ToPublic(shownLight), ToPublic(shownDark), settings.Layout);
+        return new PublicAppearance(settings.ProfileId, theme.Mode, ToPublic(shownLight), ToPublic(shownDark), layout, css);
     }
+
+    // ---- Devices ----
+
+    public const int MaxCustomCssLength = 20_000;
+
+    public async Task<IReadOnlyList<Device>> ListDevicesAsync(CancellationToken cancellationToken = default) =>
+        await devices.ListAsync(cancellationToken);
+
+    public async Task<Device?> FindDeviceAsync(string id, CancellationToken cancellationToken = default) =>
+        await devices.FindAsync(id, cancellationToken);
+
+    public async Task<AppearanceResult> CreateDeviceAsync(DeviceInput input, CancellationToken cancellationToken = default)
+    {
+        if (await TryBuildDeviceAsync(input, 1, cancellationToken) is not { } device) return AppearanceResult.InvalidInput;
+        return ToResult(await devices.SaveAsync(device, true, cancellationToken));
+    }
+
+    public async Task<AppearanceResult> UpdateDeviceAsync(string id, long revision, DeviceInput input, CancellationToken cancellationToken = default)
+    {
+        if (await TryBuildDeviceAsync(input with { Id = id }, revision, cancellationToken) is not { } device)
+            return AppearanceResult.InvalidInput;
+        return ToResult(await devices.SaveAsync(device, false, cancellationToken));
+    }
+
+    public async Task<AppearanceResult> DeleteDeviceAsync(string id, long revision, CancellationToken cancellationToken = default) =>
+        ToResult(await devices.DeleteAsync(id, revision, cancellationToken));
+
+    private async Task<Device?> TryBuildDeviceAsync(DeviceInput input, long revision, CancellationToken cancellationToken)
+    {
+        var id = input.Id?.Trim();
+        var name = input.Name?.Trim();
+        var css = input.CustomCss ?? string.Empty;
+        var over = input.Override ?? new DeviceOverride();
+        if (id is null || id.Length is 0 or > 128 ||
+            !id.All(character => character is >= 'a' and <= 'z' or >= 'A' and <= 'Z' or >= '0' and <= '9' or '-' or '_') ||
+            name is null || name.Length is 0 or > 128 || name.Any(char.IsControl) ||
+            !IsValidCustomCss(css) || !IsValidOverride(over))
+            return null;
+        foreach (var themeId in new[] { over.LightThemeId, over.DarkThemeId })
+            if (themeId is not null && await FindThemeAsync(themeId, cancellationToken) is null)
+                return null;
+        return new Device(id, name, input.IsActive, null, over, css, revision);
+    }
+
+    private static bool IsValidCustomCss(string css) =>
+        css.Length <= MaxCustomCssLength &&
+        !css.Contains("</", StringComparison.Ordinal) &&
+        !css.Contains("@import", StringComparison.OrdinalIgnoreCase) &&
+        !css.Contains('\0');
+
+    private static bool IsValidOverride(DeviceOverride value) =>
+        (value.Mode is null || ThemeModes.Contains(value.Mode)) &&
+        (value.FontSizePx is null or >= 12 and <= 48) &&
+        (value.TypeScale is null or >= 0.8 and <= 2.0) &&
+        (value.SpacingScale is null or >= 0.5 and <= 2.5) &&
+        (value.MaxColumns is null or >= 1 and <= 6) &&
+        (value.CardSize is null || CardSizes.Contains(value.CardSize)) &&
+        (value.InteractionMode is null || InteractionModes.Contains(value.InteractionMode)) &&
+        (value.MinTargetPx is null or >= 24 and <= 120) &&
+        (value.ContentMaxWidthPx is null or >= 480 and <= 2400);
+
+    private static (ThemeSelection, ProfileLayout) ApplyOverride(ThemeSelection theme, ProfileLayout layout, DeviceOverride over) =>
+    (
+        new ThemeSelection(over.Mode ?? theme.Mode, over.LightThemeId ?? theme.LightThemeId, over.DarkThemeId ?? theme.DarkThemeId),
+        layout with
+        {
+            FontSizePx = over.FontSizePx ?? layout.FontSizePx,
+            TypeScale = over.TypeScale ?? layout.TypeScale,
+            SpacingScale = over.SpacingScale ?? layout.SpacingScale,
+            MaxColumns = over.MaxColumns ?? layout.MaxColumns,
+            CardSize = over.CardSize ?? layout.CardSize,
+            InteractionMode = over.InteractionMode ?? layout.InteractionMode,
+            MinTargetPx = over.MinTargetPx ?? layout.MinTargetPx,
+            ContentMaxWidthPx = over.ContentMaxWidthPx ?? layout.ContentMaxWidthPx,
+            ShowTouchActions = over.ShowTouchActions ?? layout.ShowTouchActions,
+            ShowPresentation = over.ShowPresentation ?? layout.ShowPresentation
+        }
+    );
 
     private static PublicTheme ToPublic(Theme theme) => new(theme.ColorScheme, theme.Colors, theme.Style);
 

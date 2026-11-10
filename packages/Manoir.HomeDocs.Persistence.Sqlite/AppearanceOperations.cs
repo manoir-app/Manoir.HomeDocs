@@ -120,3 +120,83 @@ internal sealed class ProfileSettingsOperations(HomeDocsDbContext context) : IPr
         return AppearanceWriteResult.Success;
     }
 }
+
+internal sealed class DeviceOperations(HomeDocsDbContext context) : IDeviceOperations
+{
+    public async Task<IReadOnlyList<Device>> ListAsync(CancellationToken cancellationToken = default) =>
+        (await context.Devices.AsNoTracking().OrderBy(item => item.Name).ThenBy(item => item.Id).ToListAsync(cancellationToken))
+        .Select(ToDevice).ToList();
+
+    public async Task<Device?> FindAsync(string id, CancellationToken cancellationToken = default)
+    {
+        var row = await context.Devices.AsNoTracking().SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        return row is null ? null : ToDevice(row);
+    }
+
+    public async Task<AppearanceWriteResult> SaveAsync(Device device, bool isNew, CancellationToken cancellationToken = default)
+    {
+        var json = JsonSerializer.Serialize(device.Override);
+        var current = await context.Devices.SingleOrDefaultAsync(item => item.Id == device.Id, cancellationToken);
+        if (isNew)
+        {
+            if (current is not null) return AppearanceWriteResult.Conflict;
+            context.Devices.Add(new DeviceEntity
+            {
+                Id = device.Id, Name = device.Name, IsActive = device.IsActive,
+                OverrideJson = json, CustomCss = device.CustomCss, Revision = 1
+            });
+        }
+        else
+        {
+            if (current is null) return AppearanceWriteResult.NotFound;
+            if (current.Revision != device.Revision) return AppearanceWriteResult.Conflict;
+            current.Name = device.Name;
+            current.IsActive = device.IsActive;
+            current.OverrideJson = json;
+            current.CustomCss = device.CustomCss;
+            current.Revision++;
+        }
+
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            return AppearanceWriteResult.Conflict;
+        }
+
+        return AppearanceWriteResult.Success;
+    }
+
+    public async Task<AppearanceWriteResult> DeleteAsync(string id, long revision, CancellationToken cancellationToken = default)
+    {
+        var current = await context.Devices.SingleOrDefaultAsync(item => item.Id == id, cancellationToken);
+        if (current is null) return AppearanceWriteResult.NotFound;
+        if (current.Revision != revision) return AppearanceWriteResult.Conflict;
+        context.Devices.Remove(current);
+        await context.SaveChangesAsync(cancellationToken);
+        return AppearanceWriteResult.Success;
+    }
+
+    public async Task TouchAsync(string id, DateTimeOffset now, CancellationToken cancellationToken = default)
+    {
+        // Only a timestamp, written at most once a minute: a screen refreshing every second must not hammer SQLite.
+        var threshold = now.AddMinutes(-1).ToString("O");
+        try
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync(
+                $"UPDATE \"Devices\" SET \"LastSeenAt\" = {now.ToString("O")} WHERE \"Id\" = {id} AND (\"LastSeenAt\" IS NULL OR \"LastSeenAt\" < {threshold})",
+                cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Best effort: the appearance must be served even when this write fails.
+        }
+    }
+
+    private static Device ToDevice(DeviceEntity row) => new(
+        row.Id, row.Name, row.IsActive, row.LastSeenAt,
+        JsonSerializer.Deserialize<DeviceOverride>(row.OverrideJson) ?? new DeviceOverride(),
+        row.CustomCss, row.Revision);
+}

@@ -367,6 +367,7 @@ export interface PublicAppearance {
   light: PublicTheme;
   dark: PublicTheme;
   layout: PublicLayout;
+  customCss?: string | null;
 }
 
 const colorKeys = [
@@ -420,6 +421,12 @@ export function parseAppearance(value: unknown): PublicAppearance {
     (value.themeMode !== 'system' &&
       value.themeMode !== 'light' &&
       value.themeMode !== 'dark')
+  )
+    throw new PublicApiError('unavailable');
+  if (
+    value.customCss !== undefined &&
+    value.customCss !== null &&
+    typeof value.customCss !== 'string'
   )
     throw new PublicApiError('unavailable');
   parseTheme(value.light);

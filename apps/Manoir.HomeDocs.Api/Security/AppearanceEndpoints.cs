@@ -42,6 +42,27 @@ public static class AppearanceEndpoints
             return result == AppearanceResult.Success ? Results.Ok(await logic.GetProfileAsync(profileId, cancellationToken)) : ToFailure(result);
         }).AddEndpointFilter<AntiforgeryFilter>();
 
+        var devices = app.MapGroup("/api/admin/devices").RequireAuthorization();
+        devices.MapGet("/", async (AppearanceLogic logic, CancellationToken cancellationToken) =>
+            Results.Ok(await logic.ListDevicesAsync(cancellationToken)));
+        devices.MapPost("/", async (DeviceInput input, AppearanceLogic logic, CancellationToken cancellationToken) =>
+        {
+            var result = await logic.CreateDeviceAsync(input, cancellationToken);
+            return result == AppearanceResult.Success
+                ? Results.Created($"/api/admin/devices/{input.Id!.Trim()}", await logic.FindDeviceAsync(input.Id.Trim(), cancellationToken))
+                : ToFailure(result);
+        }).AddEndpointFilter<AntiforgeryFilter>();
+        devices.MapPut("/{id}", async (string id, long revision, DeviceInput input, AppearanceLogic logic, CancellationToken cancellationToken) =>
+        {
+            var result = await logic.UpdateDeviceAsync(id, revision, input, cancellationToken);
+            return result == AppearanceResult.Success ? Results.Ok(await logic.FindDeviceAsync(id, cancellationToken)) : ToFailure(result);
+        }).AddEndpointFilter<AntiforgeryFilter>();
+        devices.MapDelete("/{id}", async (string id, long revision, AppearanceLogic logic, CancellationToken cancellationToken) =>
+        {
+            var result = await logic.DeleteDeviceAsync(id, revision, cancellationToken);
+            return result == AppearanceResult.Success ? Results.NoContent() : ToFailure(result);
+        }).AddEndpointFilter<AntiforgeryFilter>();
+
         app.MapGet("/api/public/appearance", async (
             string? context,
             string? profile,

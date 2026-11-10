@@ -75,6 +75,18 @@ describe('appearanceVariables', () => {
   });
 });
 
+describe('parseAppearance css', () => {
+  it('accepts an optional text customCss only', () => {
+    expect(
+      parseAppearance({ ...structuredClone(appearance), customCss: 'a{}' })
+        .customCss,
+    ).toBe('a{}');
+    expect(() =>
+      parseAppearance({ ...structuredClone(appearance), customCss: 5 }),
+    ).toThrow();
+  });
+});
+
 describe('parseAppearance', () => {
   it('accepts a well-formed response', () => {
     expect(parseAppearance(structuredClone(appearance)).profile).toBe('tv');

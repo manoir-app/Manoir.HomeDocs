@@ -186,6 +186,109 @@ public sealed class AppearanceApiTests : IDisposable
         Assert.Equal("Maison", (await admin.GetFromJsonAsync<UsageContext[]>("/api/admin/contexts/"))!.Single().Name);
     }
 
+    [Fact]
+    public async Task ADeviceOverridesItsOwnDesignOnlyAndNeverTheNavigation()
+    {
+        using var admin = await SignedInAdminAsync();
+        using var anonymous = factory.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/admin/devices/")).StatusCode);
+
+        // A published page as the root of the context, to compare navigations.
+        using (var created = await SendAsync(admin, HttpMethod.Post, "/api/admin/pages/", new
+        {
+            page = new ContentPageInput("Accueil", "accueil", "page", [], false, "# Accueil"),
+            placement = new { parentNodeId = (Guid?)null }
+        }))
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var pageId = (await admin.GetFromJsonAsync<JsonElement[]>("/api/admin/tree/"))![0].GetProperty("pageId").GetGuid();
+        var saved = (await admin.GetFromJsonAsync<ContentPage>($"/api/admin/pages/{pageId}"))!;
+        using (var publish = await SendAsync(admin, HttpMethod.Post, $"/api/admin/pages/{pageId}/publication", new { revision = saved.Revision, isPublished = true }))
+            Assert.Equal(HttpStatusCode.NoContent, publish.StatusCode);
+        var rootNode = (await admin.GetFromJsonAsync<JsonElement[]>("/api/admin/tree/"))![0].GetProperty("id").GetGuid();
+        using (var context = await SendAsync(admin, HttpMethod.Post, "/api/admin/contexts/", new { id = "maison", name = "Maison", rootNodeId = rootNode }))
+            Assert.Equal(HttpStatusCode.Created, context.StatusCode);
+
+        async Task<string> NavigationAsync(string device) =>
+            await anonymous.GetStringAsync($"/api/public/navigation?context=maison&profile=tv&device={device}");
+        var navigationBefore = await NavigationAsync("cuisine-tv");
+        var pageBefore = await anonymous.GetStringAsync("/api/public/pages/accueil?context=maison&profile=tv&device=cuisine-tv");
+
+        foreach (var bad in new[]
+        {
+            new DeviceInput("Pas valide", "x", true, null, null),
+            new DeviceInput("ok", " ", true, null, null),
+            new DeviceInput("ok", "x", true, new DeviceOverride(FontSizePx: 99), null),
+            new DeviceInput("ok", "x", true, new DeviceOverride(LightThemeId: "inconnu"), null),
+            new DeviceInput("ok", "x", true, null, "@import url(https://exemple.test/x.css);"),
+            new DeviceInput("ok", "x", true, null, "</style><script>alert(1)</script>"),
+            new DeviceInput("ok", "x", true, null, new string('a', 20_001))
+        })
+        {
+            using var response = await SendAsync(admin, HttpMethod.Post, "/api/admin/devices/", bad);
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        using (var created = await SendAsync(admin, HttpMethod.Post, "/api/admin/devices/", new DeviceInput(
+                   "cuisine-tv", "Fire TV cuisine", true, new DeviceOverride(FontSizePx: 36, Mode: "light", MaxColumns: 2), ".public-page { letter-spacing: 0.02em; }")))
+        {
+            Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+            var device = (await created.Content.ReadFromJsonAsync<Device>())!;
+            Assert.Equal((1L, null), (device.Revision, device.LastSeenAt));
+        }
+        using (var duplicate = await SendAsync(admin, HttpMethod.Post, "/api/admin/devices/", new DeviceInput("cuisine-tv", "Autre", true, null, null)))
+            Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
+
+        // The invoked device gets its overrides on top of the profile...
+        var tv = (await anonymous.GetFromJsonAsync<PublicAppearance>("/api/public/appearance?context=maison&profile=tv&device=cuisine-tv"))!;
+        Assert.Equal(36, tv.Layout.FontSizePx);
+        Assert.Equal(2, tv.Layout.MaxColumns);
+        Assert.Equal(72, tv.Layout.MinTargetPx); // inherited from the profile
+        Assert.Equal("light", tv.ThemeMode);
+        Assert.Contains("letter-spacing", tv.CustomCss);
+
+        // ...while the reference profile, another device and an unregistered one keep the profile design.
+        foreach (var other in new[] { "", "&device=salon-tv", "&device=cuisine-tv-2" })
+        {
+            var appearance = (await anonymous.GetFromJsonAsync<PublicAppearance>($"/api/public/appearance?context=maison&profile=tv{other}"))!;
+            Assert.Equal(28, appearance.Layout.FontSizePx);
+            Assert.Equal("dark", appearance.ThemeMode);
+            Assert.Null(appearance.CustomCss);
+        }
+        Assert.Equal(28, (await admin.GetFromJsonAsync<ProfileSettings[]>("/api/admin/profiles/"))!.Single(item => item.ProfileId == "tv").Layout.FontSizePx);
+
+        // Navigation and page access are exactly the same with or without the override.
+        Assert.Equal(navigationBefore, await NavigationAsync("cuisine-tv"));
+        Assert.Equal(pageBefore, await anonymous.GetStringAsync("/api/public/pages/accueil?context=maison&profile=tv&device=cuisine-tv"));
+
+        // The connection is recorded.
+        var listed = (await admin.GetFromJsonAsync<Device[]>("/api/admin/devices/"))!.Single();
+        Assert.NotNull(listed.LastSeenAt);
+        Assert.Equal(1, listed.Revision);
+
+        // An inactive device is served the profile design.
+        using (var disable = await SendAsync(admin, HttpMethod.Put, "/api/admin/devices/cuisine-tv?revision=1",
+                   new DeviceInput("ignore", "Fire TV cuisine", false, listed.Override, listed.CustomCss)))
+            Assert.Equal(HttpStatusCode.OK, disable.StatusCode);
+        var inactive = (await anonymous.GetFromJsonAsync<PublicAppearance>("/api/public/appearance?context=maison&profile=tv&device=cuisine-tv"))!;
+        Assert.Equal(28, inactive.Layout.FontSizePx);
+        Assert.Null(inactive.CustomCss);
+        using (var stale = await SendAsync(admin, HttpMethod.Put, "/api/admin/devices/cuisine-tv?revision=1", new DeviceInput("x", "Autre nom", true, null, null)))
+            Assert.Equal(HttpStatusCode.Conflict, stale.StatusCode);
+
+        // A theme used by a device override cannot be deleted.
+        using (var theme = await SendAsync(admin, HttpMethod.Post, "/api/admin/themes/", Contrast("contraste")))
+            Assert.Equal(HttpStatusCode.Created, theme.StatusCode);
+        using (var use = await SendAsync(admin, HttpMethod.Put, "/api/admin/devices/cuisine-tv?revision=2",
+                   new DeviceInput("x", "Fire TV cuisine", true, new DeviceOverride(DarkThemeId: "contraste"), "")))
+            Assert.Equal(HttpStatusCode.OK, use.StatusCode);
+        using (var inUse = await SendAsync(admin, HttpMethod.Delete, "/api/admin/themes/contraste?revision=1", null))
+            Assert.Equal(HttpStatusCode.Conflict, inUse.StatusCode);
+
+        using (var deleted = await SendAsync(admin, HttpMethod.Delete, "/api/admin/devices/cuisine-tv?revision=3", null))
+            Assert.Equal(HttpStatusCode.NoContent, deleted.StatusCode);
+        Assert.Empty((await admin.GetFromJsonAsync<Device[]>("/api/admin/devices/"))!);
+    }
+
     private async Task<HttpClient> SignedInAdminAsync()
     {
         var client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });

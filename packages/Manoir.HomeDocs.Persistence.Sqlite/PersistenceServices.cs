@@ -34,6 +34,7 @@ public static class PersistenceServices
         services.AddScoped<UsageContextLogic>();
         services.AddScoped<IThemeOperations, ThemeOperations>();
         services.AddScoped<IProfileSettingsOperations, ProfileSettingsOperations>();
+        services.AddScoped<IDeviceOperations, DeviceOperations>();
         services.AddScoped<AppearanceLogic>();
         services.AddScoped<ContentPageLogic>();
         services.AddScoped<SetupLogic>();

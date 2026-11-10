@@ -253,3 +253,79 @@ export async function resetProfile(
   );
   return parseProfile(await response.json());
 }
+
+export interface DeviceOverride {
+  mode?: string | null;
+  lightThemeId?: string | null;
+  darkThemeId?: string | null;
+  fontSizePx?: number | null;
+  typeScale?: number | null;
+  spacingScale?: number | null;
+  maxColumns?: number | null;
+  cardSize?: string | null;
+  interactionMode?: string | null;
+  minTargetPx?: number | null;
+  contentMaxWidthPx?: number | null;
+  showTouchActions?: boolean | null;
+  showPresentation?: boolean | null;
+}
+
+export interface Device {
+  id: string;
+  name: string;
+  isActive: boolean;
+  lastSeenAt: string | null;
+  override: DeviceOverride;
+  customCss: string;
+  revision: number;
+}
+
+export interface DeviceInput {
+  id: string;
+  name: string;
+  isActive: boolean;
+  override: DeviceOverride;
+  customCss: string;
+}
+
+function parseDevice(value: unknown): Device {
+  if (
+    !isObject(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.name !== 'string' ||
+    typeof value.isActive !== 'boolean' ||
+    !isObject(value.override) ||
+    typeof value.customCss !== 'string' ||
+    typeof value.revision !== 'number' ||
+    (value.lastSeenAt !== null && typeof value.lastSeenAt !== 'string')
+  )
+    throw new AppearanceError('unavailable');
+  return value as unknown as Device;
+}
+
+export async function listDevices(): Promise<Device[]> {
+  return array(await request('/devices/'), parseDevice);
+}
+
+export async function createDevice(input: DeviceInput): Promise<Device> {
+  return parseDevice(await (await write('POST', '/devices/', input)).json());
+}
+
+export async function updateDevice(
+  device: Device,
+  input: DeviceInput,
+): Promise<Device> {
+  const response = await write(
+    'PUT',
+    `/devices/${encodeURIComponent(device.id)}?revision=${device.revision}`,
+    input,
+  );
+  return parseDevice(await response.json());
+}
+
+export async function deleteDevice(device: Device): Promise<void> {
+  await write(
+    'DELETE',
+    `/devices/${encodeURIComponent(device.id)}?revision=${device.revision}`,
+  );
+}

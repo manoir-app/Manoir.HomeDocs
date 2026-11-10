@@ -20,6 +20,10 @@ const mocks = vi.hoisted(() => ({
   deleteTheme: vi.fn(),
   saveProfile: vi.fn(),
   resetProfile: vi.fn(),
+  listDevices: vi.fn(),
+  createDevice: vi.fn(),
+  updateDevice: vi.fn(),
+  deleteDevice: vi.fn(),
 }));
 
 vi.mock('./adminAppearanceApi', async (importOriginal) => {
@@ -97,6 +101,7 @@ function renderPage() {
 describe('apparence', () => {
   beforeEach(() => {
     Object.values(mocks).forEach((mock) => mock.mockReset());
+    mocks.listDevices.mockResolvedValue([]);
     mocks.listThemes.mockResolvedValue([clair, sombre]);
     mocks.listProfiles.mockResolvedValue([
       profile('desktop'),
@@ -187,5 +192,45 @@ describe('apparence', () => {
     mocks.listThemes.mockRejectedValue(new AppearanceError('sessionExpired'));
     const { onSessionExpired } = renderPage();
     await waitFor(() => expect(onSessionExpired).toHaveBeenCalled());
+  });
+});
+
+describe('devices', () => {
+  it('enregistre un écran avec un override partiel et du CSS', async () => {
+    mocks.listThemes.mockResolvedValue([clair, sombre]);
+    mocks.listProfiles.mockResolvedValue([profile('tv')]);
+    mocks.listDevices.mockResolvedValue([]);
+    mocks.createDevice.mockImplementation(async (input) => ({
+      ...input,
+      lastSeenAt: null,
+      revision: 1,
+    }));
+    renderPage();
+    fireEvent.click(
+      await screen.findByRole('button', { name: t('deviceNew') }),
+    );
+    fireEvent.change(screen.getByLabelText(t('deviceName')), {
+      target: { value: 'Fire TV cuisine' },
+    });
+    fireEvent.change(
+      screen.getByLabelText(t('layoutFontSize'), {
+        selector: '#device-fontSizePx',
+      }),
+      {
+        target: { value: '36' },
+      },
+    );
+    fireEvent.change(screen.getByLabelText(t('deviceCss')), {
+      target: { value: '.public-page { letter-spacing: 0.02em; }' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: t('deviceSave') }));
+
+    await waitFor(() => expect(mocks.createDevice).toHaveBeenCalled());
+    const input = mocks.createDevice.mock.calls[0][0];
+    expect(input.id).toBe('fire-tv-cuisine');
+    expect(input.override.fontSizePx).toBe(36);
+    expect(input.override.maxColumns).toBeUndefined();
+    expect(input.customCss).toContain('letter-spacing');
+    expect(await screen.findByText(t('deviceSaved'))).toBeVisible();
   });
 });

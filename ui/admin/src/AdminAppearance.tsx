@@ -10,6 +10,7 @@ import type {
   ThemeInput,
   ThemeSelection,
 } from './adminAppearanceApi';
+import { AdminDevices } from './AdminDevices';
 import type { AdminRoute } from './adminRoutes';
 import type { TranslationKey } from './translations';
 
@@ -733,6 +734,13 @@ export function AdminAppearance({
             </form>
           )}
         </Card>
+
+        <AdminDevices
+          translate={t}
+          themes={themes}
+          onFailure={fail}
+          onThemesChanged={() => void load()}
+        />
       </section>
     </main>
   );

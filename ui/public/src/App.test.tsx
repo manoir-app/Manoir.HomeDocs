@@ -468,6 +468,7 @@ describe('lecteur public', () => {
         showTouchActions: false,
         showPresentation: true,
       },
+      customCss: '.public-page { letter-spacing: 0.02em; }',
     });
     mocks.getNavigation.mockResolvedValue(navigation);
     mocks.getPage.mockResolvedValue(page('accueil'));
@@ -481,7 +482,11 @@ describe('lecteur public', () => {
     expect(
       document.documentElement.style.getPropertyValue('--hd-base-size'),
     ).toBe('20px');
+    expect(
+      document.head.querySelector('style[data-device-css]')?.textContent,
+    ).toContain('letter-spacing');
     view.unmount();
+    expect(document.head.querySelector('style[data-device-css]')).toBeNull();
     expect(document.documentElement.style.getPropertyValue('--hd-bg')).toBe('');
   });
 });
