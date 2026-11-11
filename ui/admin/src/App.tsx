@@ -16,6 +16,7 @@ import type { AdminRoute } from './adminRoutes';
 import { AdminContent } from './AdminContent';
 import { AdminPageTree } from './AdminPageTree';
 import { AdminContexts } from './AdminContexts';
+import { AdminAppearance } from './AdminAppearance';
 import { AdminMedia } from './AdminMedia';
 import { useAdminSettings } from './useAdminSettings';
 import { useAdminAuth } from './useAdminAuth';
@@ -204,6 +205,15 @@ export function App() {
         />
       );
     }
+    if (adminRoute?.type === 'appearance') {
+      return (
+        <AdminAppearance
+          translate={t}
+          onNavigate={navigateAdmin}
+          onSessionExpired={() => refresh()}
+        />
+      );
+    }
     if (adminRoute?.type === 'settings' && !adminSettings.state.settings) {
       return (
         <main className="mn-kit-theme admin-status" role="status">
@@ -281,6 +291,12 @@ export function App() {
             onClick={() => navigateAdmin({ type: 'media' })}
           >
             {t('openMedia')}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => navigateAdmin({ type: 'appearance' })}
+          >
+            {t('openAppearance')}
           </Button>
           <Button
             variant="secondary"

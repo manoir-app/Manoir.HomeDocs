@@ -1,11 +1,38 @@
 :root {
-  font-family: 'Segoe UI', system-ui, sans-serif;
-  color: oklch(25% 0.035 155);
-  background: oklch(97% 0.012 86);
+  /* Appearance tokens. These defaults are the built-in light theme; the
+     reader overrides them from /api/public/appearance. */
+  --hd-bg: oklch(97% 0.012 86);
+  --hd-surface: oklch(99% 0.008 86);
+  --hd-text: oklch(25% 0.035 155);
+  --hd-muted: oklch(43% 0.035 155);
+  --hd-accent: oklch(39% 0.09 153);
+  --hd-accent-text: var(--hd-accent);
+  --hd-on-accent: #ffffff;
+  --hd-border: oklch(87% 0.018 86);
+  --hd-focus: oklch(61% 0.13 72);
+  --hd-surface-alt: color-mix(in srgb, var(--hd-text) 6%, var(--hd-surface));
+  --hd-border-strong: color-mix(in srgb, var(--hd-text) 35%, var(--hd-surface));
+  --hd-accent-soft: color-mix(in srgb, var(--hd-accent) 14%, var(--hd-surface));
+  --hd-accent-strong: color-mix(in srgb, var(--hd-accent) 70%, var(--hd-text));
+  --hd-accent-hover: color-mix(in srgb, var(--hd-accent) 80%, var(--hd-text));
+  --hd-shadow-color: oklch(25% 0.035 155 / 0.06);
+  --hd-shadow: 0 1rem 3rem var(--hd-shadow-color);
+  --hd-radius: 1rem;
+  --hd-font: 'Segoe UI', system-ui, sans-serif;
+  --hd-base-size: 16px;
+  --hd-type-scale: 1;
+  --hd-spacing: 1;
+  --hd-min-target: 2.75rem;
+  --hd-content-width: 76ch;
+  --hd-icon-size: 24px;
+  font-family: var(--hd-font);
+  color: var(--hd-text);
+  background: var(--hd-bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   color-scheme: light;
   font-optical-sizing: auto;
+  font-size: var(--hd-base-size);
 }
 
 * {
@@ -16,7 +43,7 @@ body {
   min-width: 20rem;
   min-height: 100vh;
   margin: 0;
-  background: oklch(97% 0.012 86);
+  background: var(--hd-bg);
 }
 
 button,
@@ -25,25 +52,25 @@ input {
 }
 
 a {
-  color: oklch(39% 0.09 153);
+  color: var(--hd-accent-text);
   text-decoration-thickness: 0.08em;
   text-underline-offset: 0.18em;
 }
 
 a:hover {
-  color: oklch(31% 0.09 153);
+  color: var(--hd-accent-strong);
 }
 
 a:focus-visible,
 button:focus-visible,
 input:focus-visible {
-  outline: 0.2rem solid oklch(61% 0.13 72);
+  outline: 0.2rem solid var(--hd-focus);
   outline-offset: 0.2rem;
 }
 
 .public-shell {
   min-height: 100vh;
-  color: oklch(25% 0.035 155);
+  color: var(--hd-text);
 }
 
 .public-header {
@@ -53,13 +80,13 @@ input:focus-visible {
   justify-content: space-between;
   gap: 1.5rem;
   padding: 0.8rem clamp(1rem, 3vw, 2.5rem);
-  border-bottom: 1px solid oklch(87% 0.018 86);
-  background: oklch(99% 0.008 86);
+  border-bottom: 1px solid var(--hd-border);
+  background: var(--hd-surface);
 }
 
 .public-header > a,
 .public-header > span:first-child {
-  color: oklch(25% 0.035 155);
+  color: var(--hd-text);
   font-size: 1.15rem;
   font-weight: 720;
   text-decoration: none;
@@ -70,14 +97,14 @@ input:focus-visible {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 0.45rem 1rem;
-  color: oklch(43% 0.035 155);
+  color: var(--hd-muted);
   font-size: 0.9rem;
 }
 
 .public-layout {
   display: grid;
   grid-template-columns: minmax(15rem, 19rem) minmax(0, 1fr);
-  gap: clamp(2rem, 5vw, 5rem);
+  gap: calc(clamp(2rem, 5vw, 5rem) * var(--hd-spacing));
   align-items: start;
   padding: clamp(1.5rem, 4vw, 3.5rem) clamp(1rem, 3vw, 2.5rem);
 }
@@ -94,7 +121,7 @@ input:focus-visible {
 
 .public-navigation nav h2 {
   margin: 0 0 0.75rem;
-  color: oklch(43% 0.035 155);
+  color: var(--hd-muted);
   font-size: 0.82rem;
   font-weight: 720;
   letter-spacing: 0.07em;
@@ -112,34 +139,34 @@ input:focus-visible {
 .public-navigation ul ul {
   margin: 0.2rem 0 0.25rem 0.85rem;
   padding-left: 0.75rem;
-  border-left: 1px solid oklch(87% 0.018 86);
+  border-left: 1px solid var(--hd-border);
 }
 
 .public-navigation li > a {
   display: flex;
-  min-height: 2.75rem;
+  min-height: max(2.75rem, var(--hd-min-target));
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem;
   padding: 0.55rem 0.7rem;
   border-radius: 0.55rem;
-  color: oklch(32% 0.035 155);
+  color: var(--hd-text);
   line-height: 1.35;
   text-decoration: none;
 }
 
 .public-navigation li > a:hover {
-  background: oklch(93% 0.018 86);
+  background: var(--hd-surface-alt);
 }
 
 .public-navigation li > a[aria-current='page'] {
-  background: oklch(91% 0.035 145);
-  color: oklch(27% 0.075 153);
+  background: var(--hd-accent-soft);
+  color: var(--hd-accent-strong);
   font-weight: 680;
 }
 
 .public-navigation p {
-  color: oklch(45% 0.03 155);
+  color: var(--hd-muted);
   line-height: 1.55;
 }
 
@@ -148,16 +175,17 @@ input:focus-visible {
   flex: none;
   align-items: center;
   padding: 0.15rem 0.45rem;
-  border: 1px solid oklch(82% 0.055 75);
+  border: 1px solid color-mix(in srgb, var(--hd-focus) 50%, var(--hd-surface));
   border-radius: 999px;
-  background: oklch(96% 0.025 82);
-  color: oklch(42% 0.07 66);
+  background: color-mix(in srgb, var(--hd-focus) 14%, var(--hd-surface));
+  color: var(--hd-text);
   font-size: 0.75rem;
   font-weight: 650;
 }
 
 .public-page {
-  width: min(100%, 76ch);
+  width: min(100%, var(--hd-content-width));
+  font-size: calc(1rem * var(--hd-type-scale));
   padding: 0.1rem 0 4rem;
   line-height: 1.65;
 }
@@ -171,14 +199,14 @@ input:focus-visible {
 
 .public-page h1 {
   margin: 0 0 1.6rem;
-  font-size: 2.5rem;
+  font-size: calc(2.5rem * var(--hd-type-scale));
   letter-spacing: -0.035em;
   line-height: 1.12;
 }
 
 .public-eyebrow {
   margin: 0;
-  color: oklch(45% 0.065 153);
+  color: var(--hd-accent-text);
   font-size: 0.8rem;
   font-weight: 750;
   letter-spacing: 0.08em;
@@ -218,9 +246,9 @@ input:focus-visible {
 .markdown-content pre {
   overflow-x: auto;
   padding: 1rem;
-  border: 1px solid oklch(87% 0.018 86);
+  border: 1px solid var(--hd-border);
   border-radius: 0.6rem;
-  background: oklch(94% 0.012 86);
+  background: var(--hd-surface-alt);
   font-size: 0.9em;
 }
 
@@ -231,15 +259,15 @@ input:focus-visible {
 .markdown-content :not(pre) > code {
   padding: 0.1rem 0.3rem;
   border-radius: 0.25rem;
-  background: oklch(94% 0.012 86);
+  background: var(--hd-surface-alt);
 }
 
 .markdown-content blockquote {
   margin-inline: 0;
   padding: 0.25rem 1rem;
-  border: 1px solid oklch(87% 0.018 86);
+  border: 1px solid var(--hd-border);
   border-radius: 0.5rem;
-  color: oklch(42% 0.035 155);
+  color: var(--hd-muted);
 }
 
 .markdown-content table {
@@ -250,23 +278,23 @@ input:focus-visible {
 .markdown-content th,
 .markdown-content td {
   padding: 0.65rem 0.75rem;
-  border-bottom: 1px solid oklch(87% 0.018 86);
+  border-bottom: 1px solid var(--hd-border);
   text-align: left;
   vertical-align: top;
 }
 
 .markdown-content th {
-  background: oklch(94% 0.012 86);
+  background: var(--hd-surface-alt);
 }
 
 .pin-gate {
   width: min(calc(100% - 2rem), 28rem);
   margin: clamp(3rem, 12vh, 8rem) auto;
   padding: clamp(1.5rem, 5vw, 2.5rem);
-  border: 1px solid oklch(88% 0.018 86);
-  border-radius: 1rem;
-  background: oklch(99% 0.008 86);
-  box-shadow: 0 1rem 3rem oklch(25% 0.035 155 / 0.06);
+  border: 1px solid var(--hd-border);
+  border-radius: var(--hd-radius);
+  background: var(--hd-surface);
+  box-shadow: var(--hd-shadow);
 }
 
 .pin-gate h1 {
@@ -277,7 +305,7 @@ input:focus-visible {
 
 .pin-gate > p:not(.public-eyebrow) {
   margin: 0 0 1.5rem;
-  color: oklch(43% 0.035 155);
+  color: var(--hd-muted);
 }
 
 .pin-gate form {
@@ -291,28 +319,28 @@ input:focus-visible {
 
 .pin-gate input {
   width: 100%;
-  min-height: 3.25rem;
+  min-height: max(3.25rem, var(--hd-min-target));
   padding: 0.65rem 0.8rem;
-  border: 1px solid oklch(72% 0.025 155);
+  border: 1px solid var(--hd-border-strong);
   border-radius: 0.55rem;
-  background: oklch(99% 0.008 86);
+  background: var(--hd-surface);
   font-size: 1.2rem;
   letter-spacing: 0.25em;
 }
 
 .pin-gate button {
-  min-height: 3.1rem;
+  min-height: max(3.1rem, var(--hd-min-target));
   margin-top: 0.45rem;
   border: 0;
   border-radius: 0.55rem;
-  background: oklch(39% 0.09 153);
-  color: oklch(99% 0.008 86);
+  background: var(--hd-accent);
+  color: var(--hd-on-accent);
   cursor: pointer;
   font-weight: 700;
 }
 
 .pin-gate button:hover:not(:disabled) {
-  background: oklch(32% 0.09 153);
+  background: var(--hd-accent-hover);
 }
 
 .pin-gate button:disabled {
@@ -322,7 +350,7 @@ input:focus-visible {
 
 .pin-gate form [role='alert'] {
   margin: 0.15rem 0;
-  color: oklch(48% 0.14 28);
+  color: color-mix(in srgb, oklch(55% 0.2 28) 70%, var(--hd-text));
 }
 
 .pin-gate > a {
@@ -336,7 +364,7 @@ input:focus-visible {
   min-height: 100vh;
   place-content: center;
   padding: 2rem;
-  color: oklch(35% 0.035 155);
+  color: var(--hd-text);
   font-size: 1.1rem;
   text-align: center;
 }
@@ -351,23 +379,9 @@ input:focus-visible {
   max-height: none;
 }
 
-.profile-tablet-wall,
-.profile-tablet-dock {
-  font-size: 1.1rem;
-}
-
 .profile-tablet-wall .public-navigation li > a,
 .profile-tablet-dock .public-navigation li > a {
-  min-height: 3.25rem;
-}
-
-.profile-tablet-wall .public-page,
-.profile-tablet-dock .public-page {
-  font-size: 1.08rem;
-}
-
-.profile-tv {
-  font-size: 1.2rem;
+  min-height: max(3.25rem, var(--hd-min-target));
 }
 
 .profile-tv .public-header {
@@ -375,16 +389,8 @@ input:focus-visible {
 }
 
 .profile-tv .public-navigation li > a {
-  min-height: 3.5rem;
+  min-height: max(3.5rem, var(--hd-min-target));
   font-size: 1.08rem;
-}
-
-.profile-tv .public-page h1 {
-  font-size: 3rem;
-}
-
-.profile-tv .markdown-content {
-  font-size: 1.2rem;
 }
 
 @media (max-width: 52rem) {
@@ -443,7 +449,7 @@ input:focus-visible {
 }
 
 .public-search label {
-  color: oklch(43% 0.035 155);
+  color: var(--hd-muted);
   font-size: 0.82rem;
   font-weight: 720;
   letter-spacing: 0.07em;
@@ -452,11 +458,11 @@ input:focus-visible {
 
 .public-search input[type='search'] {
   width: 100%;
-  min-height: 2.75rem;
+  min-height: max(2.75rem, var(--hd-min-target));
   padding: 0.55rem 0.8rem;
-  border: 1px solid oklch(78% 0.025 86);
+  border: 1px solid var(--hd-border-strong);
   border-radius: 0.55rem;
-  background: oklch(99% 0.006 86);
+  background: var(--hd-surface);
   color: inherit;
   font: inherit;
 }
@@ -470,7 +476,7 @@ input:focus-visible {
   align-items: start;
   justify-content: stretch;
   gap: 0.2rem;
-  border: 1px solid oklch(89% 0.018 86);
+  border: 1px solid var(--hd-border);
 }
 
 .public-search .search-title {
@@ -483,11 +489,68 @@ input:focus-visible {
 
 .public-search .search-meta,
 .public-search .search-excerpt {
-  color: oklch(42% 0.03 155);
+  color: var(--hd-muted);
   font-size: 0.88rem;
 }
 
 .public-search .search-corrected {
   margin: 0;
   font-size: 0.88rem;
+}
+
+.skip-link {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--hd-accent);
+  color: var(--hd-on-accent);
+  font-weight: 700;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The page receives the focus after a navigation; it does not need a ring of its own. */
+.public-page:focus {
+  outline: none;
+}
+
+/* A focus ring that stays visible on any theme: two contrasting rings. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 0.25rem solid var(--hd-focus);
+  outline-offset: 0.2rem;
+  box-shadow: 0 0 0 0.45rem var(--hd-bg);
+}
+
+.profile-tv a:focus-visible,
+.profile-tv button:focus-visible,
+.profile-tv input:focus-visible,
+.profile-tablet-wall a:focus-visible,
+.profile-tablet-dock a:focus-visible {
+  outline-width: 0.35rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }

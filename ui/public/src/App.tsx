@@ -1,14 +1,26 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, MouseEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { PublicInvocation, PublicNavigationItem } from './publicApi';
 import { SearchBox } from './SearchBox';
+import { useAppearance } from './appearance';
+import { useIdleReturn, useKeyboardNavigation } from './useKeyboardNavigation';
 import { usePublicManual } from './usePublicManual';
 import './app.css';
 
 interface PublicRoute {
   invocation: PublicInvocation;
   slug: string | null;
+}
+
+function historyDepth(): number {
+  const state: unknown = window.history.state;
+  return typeof state === 'object' &&
+    state !== null &&
+    'depth' in state &&
+    typeof state.depth === 'number'
+    ? state.depth
+    : 0;
 }
 
 function readRoute(): PublicRoute {
@@ -86,6 +98,7 @@ export function App() {
       tooManyPins: 'Trop de tentatives. Réessaie dans une minute.',
       pinUnavailable: 'La vérification du PIN est indisponible.',
       returnHome: 'Retour à la racine du contexte',
+      skipToContent: 'Aller au contenu',
       lock: 'Protégée',
       context: 'Contexte',
     }),
@@ -103,8 +116,11 @@ export function App() {
         search.set('device', route.invocation.device);
       const path = slug ? `/${encodeURIComponent(slug)}` : '/';
       const url = `${path}?${search.toString()}`;
-      if (replace) window.history.replaceState(null, '', url);
-      else window.history.pushState(null, '', url);
+      // The depth lets Back return to the previous page of the manual, and
+      // never leave it.
+      const depth = historyDepth();
+      if (replace) window.history.replaceState({ depth }, '', url);
+      else window.history.pushState({ depth: depth + 1 }, '', url);
       setRoute(readRoute());
     },
     [route.invocation],
@@ -114,6 +130,40 @@ export function App() {
     [navigate],
   );
   const manual = usePublicManual(route.invocation, route.slug, replaceSlug);
+  const appearance = useAppearance(route.invocation);
+
+  const shellRef = useRef<HTMLDivElement>(null);
+  const goBack = useCallback(() => {
+    if (historyDepth() > 0) window.history.back();
+    else if (route.slug) navigate(null);
+  }, [navigate, route.slug]);
+  useKeyboardNavigation(shellRef, goBack, true);
+
+  // A remote-controlled screen returns to the root of its context after a
+  // period of inactivity. The context itself never changes.
+  const rootSlug = manual.state.navigation?.root.slug;
+  const returnToRoot = useCallback(() => navigate(null, true), [navigate]);
+  useIdleReturn(
+    appearance?.layout.interactionMode === 'remote' &&
+      !!rootSlug &&
+      !!route.slug &&
+      route.slug !== rootSlug,
+    returnToRoot,
+  );
+
+  // After a page change, the focus moves to the page so that the keyboard
+  // continues from there, and the change is announced.
+  const pageSlug = manual.state.page?.slug;
+  const previousSlug = useRef<string | undefined>(undefined);
+  const [announcement, setAnnouncement] = useState('');
+  useEffect(() => {
+    if (!pageSlug) return;
+    if (previousSlug.current && previousSlug.current !== pageSlug) {
+      document.getElementById('contenu')?.focus({ preventScroll: false });
+      setAnnouncement(manual.state.page?.title ?? '');
+    }
+    previousSlug.current = pageSlug;
+  }, [pageSlug, manual.state.page?.title]);
 
   useEffect(() => {
     document.documentElement.lang = 'fr';
@@ -228,9 +278,16 @@ export function App() {
   const pageItems = navigation?.children.filter((item) => !item.isLink) ?? [];
 
   return (
-    <main
+    <div
+      ref={shellRef}
       className={`public-shell profile-${navigation?.profile ?? route.invocation.profile ?? 'desktop'}`}
     >
+      <a className="skip-link" href="#contenu">
+        {t.skipToContent}
+      </a>
+      <p className="visually-hidden" role="status" aria-live="polite">
+        {announcement}
+      </p>
       <header className="public-header">
         {navigation ? (
           <a
@@ -286,7 +343,7 @@ export function App() {
             </nav>
           )}
         </aside>
-        <article className="public-page">
+        <main className="public-page" id="contenu" tabIndex={-1}>
           {navigation && (
             <a
               className="home-link"
@@ -326,9 +383,9 @@ export function App() {
               {page.markdown}
             </ReactMarkdown>
           </div>
-        </article>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }
 

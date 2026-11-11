@@ -197,6 +197,45 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.DeviceEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CustomCss")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OverrideJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Devices", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Devices_Override", "json_valid(\"OverrideJson\")");
+
+                            t.HasCheckConstraint("CK_Devices_Revision", "\"Revision\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.MediaItemEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -284,6 +323,65 @@ namespace Manoir.HomeDocs.Persistence.Sqlite.Migrations
                     b.ToTable("PageTreeNodes", null, t =>
                         {
                             t.HasCheckConstraint("CK_PageTreeNodes_Position", "\"Position\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.ProfileSettingsEntity", b =>
+                {
+                    b.Property<string>("ProfileId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DataJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ProfileId");
+
+                    b.ToTable("ProfileSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ProfileSettings_Data", "json_valid(\"DataJson\")");
+
+                            t.HasCheckConstraint("CK_ProfileSettings_Revision", "\"Revision\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("Manoir.HomeDocs.Persistence.Sqlite.ThemeEntity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ColorScheme")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DataJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Themes", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Themes_ColorScheme", "\"ColorScheme\" IN ('light','dark')");
+
+                            t.HasCheckConstraint("CK_Themes_Data", "json_valid(\"DataJson\")");
+
+                            t.HasCheckConstraint("CK_Themes_Revision", "\"Revision\" > 0");
                         });
                 });
 
