@@ -305,6 +305,21 @@ modifier le port hôte. Une image déjà construite peut être lancée sans buil
 docker compose up -d --no-build
 ```
 
+### Image publiée sur GitHub
+
+Le workflow `.github/workflows/docker-image.yml` construit l'image (amd64 et
+arm64) à chaque changement de `dev` ou `main` et à chaque tag `vX.Y.Z`, puis la
+publie dans le registre de paquets du dépôt : `ghcr.io/manoir-app/manoir.homedocs`
+(étiquettes `dev`, `latest` pour `main`, la version pour un tag, et `sha-…`).
+Une pull request construit l'image sans la publier. Elle est visible dans l'onglet
+« Packages » du dépôt.
+
+Le build de l'administration lit le paquet npm privé `@manoir-app/core-admin-ui-kit` :
+le workflow utilise le secret de dépôt `NPM_PACKAGES_TOKEN` (jeton avec `read:packages`)
+s'il existe, sinon `GITHUB_TOKEN`, qui ne suffit que si le paquet autorise ce dépôt.
+Pour lancer l'image publiée avec Compose, remplacer `build` par
+`image: ghcr.io/manoir-app/manoir.homedocs:dev` et utiliser `docker compose up -d --no-build`.
+
 Le volume nommé `homedocs-data` est monté sur `/data` et conservé lors d'un
 arrêt ou d'une recréation du conteneur. Il contient les répertoires `database`,
 `content`, `media`, `themes`, `css`, `backups` et `keys` ; ces répertoires
