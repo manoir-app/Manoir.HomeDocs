@@ -189,16 +189,38 @@ function PageList({
   );
 }
 
-function PageEditor({
+function slugFromTitle(title: string): string {
+  return title
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    .replace(/-+$/g, '');
+}
+
+export function PageEditor({
   pageId,
   t,
   onNavigate,
   onSessionExpired,
+  fixedParent,
+  embedded = false,
+  onCreated,
+  onChanged,
 }: {
   pageId?: string;
   t: Props['translate'];
   onNavigate: Props['onNavigate'];
   onSessionExpired: Props['onSessionExpired'];
+  /** A new page is created under this node (null: at the root), without choosing the placement. */
+  fixedParent?: { nodeId: string | null };
+  /** Inside the manual workspace: no shortcut buttons to the other admin pages. */
+  embedded?: boolean;
+  onCreated?: (id: string) => void;
+  /** Called after a save or a publication change, so a surrounding view can refresh. */
+  onChanged?: () => void;
 }) {
   const [page, setPage] = useState<ContentPage>();
   const [form, setForm] = useState<ContentPageInput>(emptyPage);
@@ -206,7 +228,10 @@ function PageEditor({
   const [contextsLoading, setContextsLoading] = useState(true);
   const [treeNodes, setTreeNodes] = useState<AdminTreeNode[]>([]);
   const [placementChoice, setPlacementChoice] = useState('');
-  const [placementLoading, setPlacementLoading] = useState(!pageId);
+  const [placementLoading, setPlacementLoading] = useState(
+    !pageId && !fixedParent,
+  );
+  const slugTouched = useRef(false);
   const [preview, setPreview] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
   const editorView = useRef<EditorView | null>(null);
@@ -296,7 +321,7 @@ function PageEditor({
   useEffect(() => {
     const activeRevision = revision;
     let active = true;
-    if (!pageId) {
+    if (!pageId && !fixedParent) {
       queueMicrotask(() => {
         if (!active) return;
         const requestId = ++activeRevision.current;
@@ -324,7 +349,7 @@ function PageEditor({
       active = false;
       activeRevision.current++;
     };
-  }, [onSessionExpired, pageId]);
+  }, [onSessionExpired, pageId, fixedParent]);
 
   const update = <K extends keyof ContentPageInput>(
     key: K,
@@ -369,15 +394,20 @@ function PageEditor({
         setPage(updated);
         setForm({ ...payload, contexts: updated.contexts });
         setNotice('pageSaved');
+        onChanged?.();
       } else {
-        if (!placementChoice) {
+        if (!fixedParent && !placementChoice) {
           setError('invalid');
           return;
         }
-        const parentNodeId =
-          placementChoice === 'root' ? null : placementChoice;
+        const parentNodeId = fixedParent
+          ? fixedParent.nodeId
+          : placementChoice === 'root'
+            ? null
+            : placementChoice;
         const id = await api.createPage(payload, parentNodeId);
-        onNavigate({ type: 'content-edit', id });
+        if (onCreated) onCreated(id);
+        else onNavigate({ type: 'content-edit', id });
       }
     } catch (reason) {
       const failure =
@@ -404,6 +434,7 @@ function PageEditor({
       setNotice(
         page.isPublished ? 'pageUnpublishedNotice' : 'pagePublishedNotice',
       );
+      onChanged?.();
     } catch (reason) {
       const failure =
         reason instanceof api.ContentError ? reason.reason : 'unavailable';
@@ -457,18 +488,22 @@ function PageEditor({
           <h1>{page ? t('editPage') : t('createPage')}</h1>
           <p>{t('editorDescription')}</p>
         </div>
-        <Button
-          variant="secondary"
-          onClick={() => onNavigate({ type: 'content-list' })}
-        >
-          {t('pages')}
-        </Button>
-        <Button
-          variant="secondary"
-          onClick={() => onNavigate({ type: 'tree' })}
-        >
-          {t('tree')}
-        </Button>
+        {!embedded && (
+          <>
+            <Button
+              variant="secondary"
+              onClick={() => onNavigate({ type: 'content-list' })}
+            >
+              {t('pages')}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => onNavigate({ type: 'tree' })}
+            >
+              {t('tree')}
+            </Button>
+          </>
+        )}
       </div>
       {page && (
         <p className="content-state">
@@ -486,7 +521,13 @@ function PageEditor({
               maxLength={200}
               required
               value={form.title}
-              onChange={(event) => update('title', event.target.value)}
+              onChange={(event) => {
+                const title = event.target.value;
+                update('title', title);
+                // The address follows the title until it is edited by hand.
+                if (!page && !slugTouched.current)
+                  update('slug', slugFromTitle(title));
+              }}
             />
           </Field>
           <Field htmlFor="page-slug" label={t('slug')} required>
@@ -496,7 +537,10 @@ function PageEditor({
               pattern="[a-z0-9]+(-[a-z0-9]+)*"
               required
               value={form.slug}
-              onChange={(event) => update('slug', event.target.value)}
+              onChange={(event) => {
+                slugTouched.current = true;
+                update('slug', event.target.value);
+              }}
             />
           </Field>
           <label className="content-field" htmlFor="page-category">
@@ -539,7 +583,7 @@ function PageEditor({
               </label>
             ))}
           </fieldset>
-          {!page && (
+          {!page && !fixedParent && (
             <label className="content-field" htmlFor="page-placement">
               <span>{t('placement')}</span>
               <select

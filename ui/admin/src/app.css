@@ -861,3 +861,134 @@ body {
   outline: 2px solid var(--preview-focus);
   outline-offset: 2px;
 }
+
+.manual-content {
+  display: grid;
+  gap: 1rem;
+}
+
+.manual-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 1rem;
+}
+
+.manual-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(17rem, 24rem);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.manual-main {
+  min-width: 0;
+}
+
+.manual-tree {
+  position: sticky;
+  top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  padding: 1rem;
+  border: 1px solid rgb(127 127 127 / 0.4);
+  border-radius: 0.75rem;
+}
+
+.manual-tree h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.manual-tree ul {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0 0 0 1rem;
+  list-style: none;
+}
+
+.manual-tree > ul {
+  padding-left: 0;
+}
+
+.manual-node {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+}
+
+.manual-node-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.manual-node-title[aria-current='page'] {
+  border-color: currentcolor;
+  font-weight: 700;
+}
+
+.manual-node-title small {
+  opacity: 0.7;
+}
+
+.manual-node-actions {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.manual-link-picker,
+.manual-link-results {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.manual-link-results {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.manual-link-results li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.manual-link-results small {
+  display: block;
+  opacity: 0.7;
+}
+
+@media (max-width: 56rem) {
+  .manual-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .manual-tree {
+    position: static;
+    max-height: none;
+    order: -1;
+  }
+}
+
+.manual-warning {
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid currentcolor;
+  border-radius: 0.5rem;
+}
