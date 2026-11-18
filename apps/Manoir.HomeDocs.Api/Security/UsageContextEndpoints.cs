@@ -21,6 +21,12 @@ public static class UsageContextEndpoints
         contexts.MapDelete("/{id}", DeleteAsync).AddEndpointFilter<AntiforgeryFilter>();
 
         var publicApi = app.MapGroup("/api/public");
+        publicApi.MapGet("/defaults", async (UsageContextLogic logic, HttpContext httpContext, CancellationToken cancellationToken) =>
+        {
+            httpContext.Response.Headers.CacheControl = "no-store";
+            var defaults = await logic.GetDefaultsAsync(cancellationToken);
+            return defaults is null ? Results.NotFound() : Results.Ok(defaults);
+        });
         publicApi.MapGet("/navigation", async (
             string? context,
             string? profile,

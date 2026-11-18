@@ -287,6 +287,15 @@ conflits de modification sont signalés et demandent de recharger la page. Une
 page publiée est consultable sur le site public selon ses contextes et son
 éventuelle protection par PIN.
 
+## Adresse par défaut
+
+Un contexte « Maison » est créé au premier démarrage. Une adresse sans contexte ni
+profil, comme `/`, utilise ce contexte et le profil « ordinateur » : l'adresse est
+complétée en `/?context=maison&profile=desktop`. Tant qu'aucune racine n'est choisie pour
+ce contexte, il affiche la première page racine de l'arborescence. Seule une valeur
+absente est remplacée : un contexte ou un profil précisé mais inconnu reste refusé. Le
+bouton « Voir le manuel » de l'administration ouvre cette adresse.
+
 ## Docker Compose
 
 Avec `NODE_AUTH_TOKEN` configuré dans le terminal :

@@ -30,7 +30,7 @@ public sealed class UsageContextApiTests : IDisposable
 
         using var admin = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         await InitializeAndSignInAsync(admin);
-        Assert.Empty(await admin.GetFromJsonAsync<JsonElement[]>("/api/admin/contexts/") ?? []);
+        Assert.Equal("maison", Assert.Single(await admin.GetFromJsonAsync<JsonElement[]>("/api/admin/contexts/") ?? []).GetProperty("id").GetString());
         using var noCsrf = await admin.PostAsJsonAsync("/api/admin/contexts/", new { id = "invites", name = "Invités" });
         Assert.Equal(HttpStatusCode.BadRequest, noCsrf.StatusCode);
 
@@ -180,7 +180,7 @@ public sealed class UsageContextApiTests : IDisposable
 
         using var admin = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         await InitializeAndSignInAsync(admin);
-        Assert.Empty(await admin.GetFromJsonAsync<JsonElement[]>("/api/admin/contexts/") ?? []);
+        Assert.Equal("maison", Assert.Single(await admin.GetFromJsonAsync<JsonElement[]>("/api/admin/contexts/") ?? []).GetProperty("id").GetString());
         Assert.Empty(await admin.GetFromJsonAsync<ContentPage[]>("/api/admin/pages/") ?? []);
 
         using var noCsrf = await admin.PostAsync("/api/admin/demo/install", null);
@@ -192,8 +192,10 @@ public sealed class UsageContextApiTests : IDisposable
         Assert.Equal("installed", installResult.RootElement.GetProperty("status").GetString());
 
         var contexts = await admin.GetFromJsonAsync<JsonElement[]>("/api/admin/contexts/");
-        Assert.Equal(3, contexts?.Length);
-        Assert.All(contexts!, context => Assert.NotEqual(Guid.Empty, context.GetProperty("rootNodeId").GetGuid()));
+        Assert.Equal(4, contexts?.Length);
+        // The demo contexts get a root; the default context follows the first root of the tree.
+        Assert.All(contexts!.Where(context => context.GetProperty("id").GetString() != "maison"),
+            context => Assert.NotEqual(Guid.Empty, context.GetProperty("rootNodeId").GetGuid()));
 
         var pages = await admin.GetFromJsonAsync<ContentPage[]>("/api/admin/pages/");
         Assert.NotNull(pages);
@@ -261,6 +263,38 @@ public sealed class UsageContextApiTests : IDisposable
             DataSource = Path.Combine(root, "database", "homedocs.db")
         }.ToString());
         SqliteConnection.ClearPool(connection);
+        if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
+    }
+}
+
+public sealed class DefaultContextTests : IDisposable
+{
+    private readonly string root = Path.Combine(Path.GetTempPath(), $"homedocs-default-{Guid.NewGuid():N}");
+    private readonly WebApplicationFactory<Program> factory;
+
+    public DefaultContextTests() =>
+        factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, config) => config.AddInMemoryCollection(
+                new Dictionary<string, string?> { ["HomeDocs:DataPath"] = root })));
+
+    [Fact]
+    public async Task AFreshInstallHasADefaultContextAndProfileThatFollowTheFirstRootOfTheTree()
+    {
+        using var anonymous = factory.CreateClient();
+        var defaults = (await anonymous.GetFromJsonAsync<JsonElement>("/api/public/defaults"));
+        Assert.Equal("maison", defaults.GetProperty("context").GetString());
+        Assert.Equal("desktop", defaults.GetProperty("profile").GetString());
+
+        // No page yet: the default context exists but has nothing to show.
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/api/public/navigation?context=maison&profile=desktop")).StatusCode);
+        // An explicit unknown context is still refused: only a missing value falls back.
+        Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/api/public/navigation?context=inconnu&profile=desktop")).StatusCode);
+    }
+
+    public void Dispose()
+    {
+        factory.Dispose();
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
     }
 }

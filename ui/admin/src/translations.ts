@@ -91,6 +91,7 @@ const translations = {
     openTree: 'Gérer l’arborescence',
     openContexts: 'Gérer les contextes',
     openMedia: 'Gérer les médias',
+    openManual: 'Voir le manuel',
     mediaLibrary: 'Médias',
     mediaDescription:
       'Images et PDF stockés localement, réutilisables dans toutes les pages.',
@@ -470,6 +471,7 @@ const translations = {
     openTree: 'Manage page tree',
     openContexts: 'Manage contexts',
     openMedia: 'Manage media',
+    openManual: 'View the manual',
     mediaLibrary: 'Media',
     mediaDescription: 'Images and PDFs stored locally, reusable in every page.',
     mediaSearch: 'Search media',

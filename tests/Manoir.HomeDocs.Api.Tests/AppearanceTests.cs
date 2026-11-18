@@ -151,8 +151,6 @@ public sealed class AppearanceApiTests : IDisposable
     {
         using var admin = await SignedInAdminAsync();
         using var anonymous = factory.CreateClient();
-        using (var context = await SendAsync(admin, HttpMethod.Post, "/api/admin/contexts/", new { id = "maison", name = "Maison", rootNodeId = (Guid?)null }))
-            Assert.Equal(HttpStatusCode.Created, context.StatusCode);
 
         Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/api/public/appearance?context=inconnu&profile=tv")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await anonymous.GetAsync("/api/public/appearance?context=maison&profile=frigo")).StatusCode);
@@ -204,9 +202,6 @@ public sealed class AppearanceApiTests : IDisposable
         var saved = (await admin.GetFromJsonAsync<ContentPage>($"/api/admin/pages/{pageId}"))!;
         using (var publish = await SendAsync(admin, HttpMethod.Post, $"/api/admin/pages/{pageId}/publication", new { revision = saved.Revision, isPublished = true }))
             Assert.Equal(HttpStatusCode.NoContent, publish.StatusCode);
-        var rootNode = (await admin.GetFromJsonAsync<JsonElement[]>("/api/admin/tree/"))![0].GetProperty("id").GetGuid();
-        using (var context = await SendAsync(admin, HttpMethod.Post, "/api/admin/contexts/", new { id = "maison", name = "Maison", rootNodeId = rootNode }))
-            Assert.Equal(HttpStatusCode.Created, context.StatusCode);
 
         async Task<string> NavigationAsync(string device) =>
             await anonymous.GetStringAsync($"/api/public/navigation?context=maison&profile=tv&device={device}");

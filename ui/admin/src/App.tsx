@@ -294,6 +294,12 @@ export function App() {
           </Button>
           <Button
             variant="secondary"
+            onClick={() => window.open('/', '_blank', 'noopener')}
+          >
+            {t('openManual')}
+          </Button>
+          <Button
+            variant="secondary"
             onClick={() => navigateAdmin({ type: 'appearance' })}
           >
             {t('openAppearance')}

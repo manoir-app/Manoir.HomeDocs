@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   logoutProtectedAccess: vi.fn(),
   searchPages: vi.fn(),
   getAppearance: vi.fn(),
+  getDefaults: vi.fn(),
 }));
 
 vi.mock('./publicApi', async (importOriginal) => {
@@ -31,6 +32,7 @@ vi.mock('./publicApi', async (importOriginal) => {
     logoutProtectedAccess: mocks.logoutProtectedAccess,
     searchPages: mocks.searchPages,
     getAppearance: mocks.getAppearance,
+    getDefaults: mocks.getDefaults,
   };
 });
 
@@ -80,8 +82,57 @@ function setUrl(path: string) {
 }
 
 describe('lecteur public', () => {
+  it('utilise le contexte et le profil par défaut quand l’adresse n’en donne pas', async () => {
+    mocks.getDefaults.mockResolvedValue({
+      context: 'habitant',
+      profile: 'desktop',
+    });
+    mocks.getNavigation.mockResolvedValue(navigation);
+    mocks.getPage.mockResolvedValue(page('accueil'));
+    window.history.replaceState(null, '', '/');
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Accueil' }),
+    ).toBeVisible();
+    expect(window.location.search).toBe('?context=habitant&profile=desktop');
+    expect(mocks.getNavigation).toHaveBeenCalledWith(
+      expect.objectContaining({ context: 'habitant', profile: 'desktop' }),
+    );
+  });
+
+  it('garde ce que l’adresse précise et ne complète que ce qui manque', async () => {
+    mocks.getDefaults.mockResolvedValue({
+      context: 'habitant',
+      profile: 'desktop',
+    });
+    mocks.getNavigation.mockResolvedValue({ ...navigation, profile: 'tv' });
+    mocks.getPage.mockResolvedValue(page('accueil'));
+    window.history.replaceState(null, '', '/accueil?profile=tv');
+
+    render(<App />);
+
+    await screen.findByRole('heading', { name: 'Accueil' });
+    const search = new URLSearchParams(window.location.search);
+    expect(search.get('profile')).toBe('tv');
+    expect(search.get('context')).toBe('habitant');
+  });
+
+  it('indique que le manuel est introuvable quand aucun contexte n’existe', async () => {
+    mocks.getDefaults.mockRejectedValue(new PublicApiError('notFound'));
+    window.history.replaceState(null, '', '/');
+
+    render(<App />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Aucune page ne correspond à ce contexte et à ce profil.',
+    );
+  });
+
   beforeEach(() => {
     mocks.getAppearance.mockReset();
+    mocks.getDefaults.mockReset();
     mocks.getAppearance.mockRejectedValue(new PublicApiError('notFound'));
     mocks.getNavigation.mockReset();
     mocks.getPage.mockReset();

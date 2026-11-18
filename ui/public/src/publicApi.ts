@@ -440,3 +440,21 @@ export async function getAppearance(
   const response = await request(`/api/public/appearance?${query(invocation)}`);
   return parseAppearance(await response.json());
 }
+
+export interface PublicDefaults {
+  context: string;
+  profile: string;
+}
+
+/** The context and profile used when the address names none. */
+export async function getDefaults(): Promise<PublicDefaults> {
+  const response = await request('/api/public/defaults');
+  const data: unknown = await response.json();
+  if (
+    !isObject(data) ||
+    typeof data.context !== 'string' ||
+    typeof data.profile !== 'string'
+  )
+    throw new PublicApiError('unavailable');
+  return { context: data.context, profile: data.profile };
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent, MouseEvent } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { getDefaults } from './publicApi';
 import type { PublicInvocation, PublicNavigationItem } from './publicApi';
 import { SearchBox } from './SearchBox';
 import { useAppearance } from './appearance';
@@ -129,6 +130,33 @@ export function App() {
     (slug: string) => navigate(slug, true),
     [navigate],
   );
+  // An address without context or profile uses the defaults of the installation.
+  // They are written into the address so that every link keeps them explicit.
+  const missing = !route.invocation.context || !route.invocation.profile;
+  const [defaultsFailed, setDefaultsFailed] = useState(false);
+  useEffect(() => {
+    if (!missing) return;
+    let active = true;
+    getDefaults()
+      .then((defaults) => {
+        if (!active) return;
+        const search = new URLSearchParams(window.location.search);
+        if (!search.get('context')) search.set('context', defaults.context);
+        if (!search.get('profile')) search.set('profile', defaults.profile);
+        window.history.replaceState(
+          window.history.state,
+          '',
+          `${window.location.pathname}?${search.toString()}`,
+        );
+        setRoute(readRoute());
+      })
+      .catch(() => {
+        if (active) setDefaultsFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [missing, route.invocation.context, route.invocation.profile]);
   const manual = usePublicManual(route.invocation, route.slug, replaceSlug);
   const appearance = useAppearance(route.invocation);
 
@@ -179,6 +207,17 @@ export function App() {
     event.preventDefault();
     if (await manual.unlock(pin)) setPin('');
   };
+
+  if (missing) {
+    return (
+      <main
+        className="public-status"
+        role={defaultsFailed ? 'alert' : 'status'}
+      >
+        {defaultsFailed ? t.notFound : t.loading}
+      </main>
+    );
+  }
 
   if (manual.state.loading) {
     return (

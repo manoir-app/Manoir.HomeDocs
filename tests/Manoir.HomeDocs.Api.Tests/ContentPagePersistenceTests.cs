@@ -27,9 +27,8 @@ public sealed class ContentPagePersistenceTests : IAsyncLifetime
             .AddHomeDocsSqlite(_ => DatabasePath).BuildServiceProvider();
         await services.MigrateHomeDocsAsync();
         await using var scope = services.CreateAsyncScope();
-        Assert.Equal(ContextWriteResult.Success,
-            await scope.ServiceProvider.GetRequiredService<IUsageContextOperations>()
-                .SaveAsync(null, new UsageContext("maison", "Maison", null)));
+        // The first start creates the default context.
+        Assert.NotNull(await scope.ServiceProvider.GetRequiredService<IUsageContextOperations>().FindAsync("maison"));
     }
 
     public async Task DisposeAsync()
