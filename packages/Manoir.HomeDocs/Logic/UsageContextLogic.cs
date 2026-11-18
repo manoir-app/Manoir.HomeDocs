@@ -12,6 +12,9 @@ public enum PublicPageResult
     NotFound
 }
 
+/// <summary>The invocation used when an address names no context or profile.</summary>
+public sealed record PublicDefaults(string Context, string Profile);
+
 public sealed record PublicPageResolution(PublicPageResult Result, PublicContentPage? Page, string? RedirectSlug);
 
 public sealed partial class UsageContextLogic(
@@ -19,11 +22,26 @@ public sealed partial class UsageContextLogic(
     IContentPageOperations pages,
     IPageTreeOperations tree)
 {
+    public const string DefaultContextId = "maison";
+    public const string DefaultContextName = "Maison";
+    public const string DefaultProfile = "desktop";
+
     private static readonly HashSet<string> Profiles =
         ["desktop", "mobile", "tablet-wall", "tablet-dock", "tv"];
 
     public Task<IReadOnlyList<UsageContext>> ListAsync(CancellationToken cancellationToken = default) =>
         contexts.ListAsync(cancellationToken);
+
+    /// <summary>
+    /// The context and profile to use when none is given: the context "maison" (created at the first start),
+    /// or else the first context by name. Null when there is no context at all.
+    /// </summary>
+    public async Task<PublicDefaults?> GetDefaultsAsync(CancellationToken cancellationToken = default)
+    {
+        var all = await contexts.ListAsync(cancellationToken);
+        var chosen = all.FirstOrDefault(item => item.Id == DefaultContextId) ?? all.FirstOrDefault();
+        return chosen is null ? null : new PublicDefaults(chosen.Id, DefaultProfile);
+    }
 
     public Task<UsageContext?> FindAsync(string id, CancellationToken cancellationToken = default) =>
         contexts.FindAsync(id, cancellationToken);
@@ -107,10 +125,16 @@ public sealed partial class UsageContextLogic(
         if (string.IsNullOrEmpty(contextId) || !Profiles.Contains(profile ?? string.Empty) || !IsValidDevice(device))
             return null;
         var usageContext = await contexts.FindAsync(contextId, cancellationToken);
-        if (usageContext?.RootNodeId is null) return null;
+        if (usageContext is null) return null;
 
         var allNodes = await tree.ListAsync(cancellationToken);
-        var rootNode = allNodes.SingleOrDefault(node => node.Id == usageContext.RootNodeId.Value);
+        // The default context follows the first root of the tree until a root is chosen for it.
+        var rootNode = usageContext.RootNodeId is { } rootId
+            ? allNodes.SingleOrDefault(node => node.Id == rootId)
+            : usageContext.Id == DefaultContextId
+                ? allNodes.Where(node => node.ParentNodeId is null && !node.IsLink)
+                    .OrderBy(node => node.Position).ThenBy(node => node.Id).FirstOrDefault()
+                : null;
         if (rootNode is null) return null;
         var allPages = (await pages.ListAsync(cancellationToken)).ToDictionary(page => page.Id);
         if (!allPages.TryGetValue(rootNode.PageId, out var rootPage) ||

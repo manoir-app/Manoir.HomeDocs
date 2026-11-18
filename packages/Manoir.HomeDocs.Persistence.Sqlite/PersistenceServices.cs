@@ -47,7 +47,20 @@ public static class PersistenceServices
     {
         await using var scope = services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<HomeDocsDbContext>().Database.MigrateAsync(cancellationToken);
+        await EnsureDefaultContextAsync(scope.ServiceProvider, cancellationToken);
         await SearchIndex.RebuildAsync(services, cancellationToken);
         await ContentHistory.EnsureBaselineAsync(services, cancellationToken);
+    }
+
+    /// <summary>A manual that has no context cannot be opened: the first start creates the default one.</summary>
+    private static async Task EnsureDefaultContextAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var contexts = services.GetRequiredService<IUsageContextOperations>();
+        if ((await contexts.ListAsync(cancellationToken)).Count > 0) return;
+        await contexts.SaveAsync(
+            null,
+            new Manoir.HomeDocs.Contracts.UsageContext(
+                UsageContextLogic.DefaultContextId, UsageContextLogic.DefaultContextName, null),
+            cancellationToken);
     }
 }

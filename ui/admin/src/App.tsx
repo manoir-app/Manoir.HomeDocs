@@ -17,6 +17,7 @@ import { AdminContent } from './AdminContent';
 import { AdminPageTree } from './AdminPageTree';
 import { AdminContexts } from './AdminContexts';
 import { AdminAppearance } from './AdminAppearance';
+import { AdminManual } from './AdminManual';
 import { AdminMedia } from './AdminMedia';
 import { useAdminSettings } from './useAdminSettings';
 import { useAdminAuth } from './useAdminAuth';
@@ -205,6 +206,15 @@ export function App() {
         />
       );
     }
+    if (adminRoute?.type === 'manual') {
+      return (
+        <AdminManual
+          translate={t}
+          onNavigate={navigateAdmin}
+          onSessionExpired={() => refresh()}
+        />
+      );
+    }
     if (adminRoute?.type === 'appearance') {
       return (
         <AdminAppearance
@@ -268,6 +278,9 @@ export function App() {
           >
             {t('openSettings')}
           </Button>
+          <Button onClick={() => navigateAdmin({ type: 'manual' })}>
+            {t('openManualEditor')}
+          </Button>
           <Button
             variant="secondary"
             onClick={() => navigateAdmin({ type: 'content-list' })}
@@ -291,6 +304,12 @@ export function App() {
             onClick={() => navigateAdmin({ type: 'media' })}
           >
             {t('openMedia')}
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => window.open('/', '_blank', 'noopener')}
+          >
+            {t('openManual')}
           </Button>
           <Button
             variant="secondary"
